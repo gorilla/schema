@@ -123,6 +123,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 				return ConversionError{path, key}
 			}
 		}
+		if len(items) == 1 && items[0].Kind() == reflect.Invalid {
+			items[0] = reflect.Zero(elemT)
+		}
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)
 		v.Set(value)
 	} else {

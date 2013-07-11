@@ -107,10 +107,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
 		for key, value := range values {
-			if value == "" {
-				// We are just ignoring empty values for now.
-				continue
-			} else if item := conv(value); item.IsValid() {
+			if item := conv(value); item.IsValid() {
 				if isPtrElem {
 					ptr := reflect.New(elemT)
 					ptr.Elem().Set(item)
@@ -118,22 +115,17 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 				}
 				items[key] = item
 			} else {
-				// If a single value is invalid should we give up
-				// or set a zero value?
-				return ConversionError{path, key}
+				items[key] = reflect.Zero(elemT)
 			}
 		}
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)
 		v.Set(value)
 	} else {
-		if values[0] == "" {
-			// We are just ignoring empty values for now.
-			return nil
-		} else if conv := d.cache.conv[t]; conv != nil {
+		if conv := d.cache.conv[t]; conv != nil {
 			if value := conv(values[0]); value.IsValid() {
 				v.Set(value)
 			} else {
-				return ConversionError{path, -1}
+				reflect.Zero(t)
 			}
 		} else {
 			return fmt.Errorf("schema: converter not found for %v", t)

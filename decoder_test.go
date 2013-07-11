@@ -11,19 +11,23 @@ import (
 
 // All cases we want to cover, in a nutshell.
 type S1 struct {
-	F01 int     `schema:"f1"`
-	F02 *int    `schema:"f2"`
-	F03 []int   `schema:"f3"`
-	F04 []*int  `schema:"f4"`
-	F05 *[]int  `schema:"f5"`
-	F06 *[]*int `schema:"f6"`
-	F07 S2      `schema:"f7"`
-	F08 *S1     `schema:"f8"`
-	F09 int     `schema:"-"`
-	F10 []S1    `schema:"f10"`
-	F11 []*S1   `schema:"f11"`
-	F12 *[]S1   `schema:"f12"`
-	F13 *[]*S1  `schema:"f13"`
+	F01 int      `schema:"f1"`
+	F02 *int     `schema:"f2"`
+	F03 []int    `schema:"f3"`
+	F04 []*int   `schema:"f4"`
+	F05 *[]int   `schema:"f5"`
+	F06 *[]*int  `schema:"f6"`
+	F07 S2       `schema:"f7"`
+	F08 *S1      `schema:"f8"`
+	F09 int      `schema:"-"`
+	F10 []S1     `schema:"f10"`
+	F11 []*S1    `schema:"f11"`
+	F12 *[]S1    `schema:"f12"`
+	F13 *[]*S1   `schema:"f13"`
+	F14 []string `schema:"f14"`
+	F15 int      `schema:"f15"`
+	F16 string   `schema:"f16"`
+	F17 []int    `schema:"f17"`
 }
 
 type S2 struct {
@@ -49,6 +53,10 @@ func TestAll(t *testing.T) {
 		"f12.0.f12.1.f6": {"123", "124"},
 		"f13.0.f13.0.f6": {"131", "132"},
 		"f13.0.f13.1.f6": {"133", "134"},
+		"f14":            {"0", "1", ""},
+		"f15":            {""},
+		"f16":            {""},
+		"f17":            {"0", "1", ""},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -109,6 +117,10 @@ func TestAll(t *testing.T) {
 				},
 			},
 		},
+		F14: []string{"0", "1", ""},
+		F15: 0,
+		F16: "",
+		F17: []int{0, 1, 0},
 	}
 
 	s := &S1{}
@@ -285,6 +297,38 @@ func TestAll(t *testing.T) {
 					t.Errorf("f13.0.f13.0.f6: expected %v, got %v", vals(eF132), vals(sF132))
 				}
 			}
+		}
+	}
+
+	if s.F14 == nil {
+		t.Errorf("F14: got nil")
+	} else if len(s.F14) != 3 {
+		t.Errorf("F14: expected 3 elements, got %v", s.F14)
+	} else {
+		if s.F14[0] != e.F14[0] ||
+			s.F14[1] != e.F14[1] ||
+			s.F14[2] != e.F14[2] {
+			t.Errorf("F14: expected %v, got %v", e.F14, s.F14)
+		}
+	}
+
+	if s.F15 != e.F15 {
+		t.Errorf("F15: expected %v, got %v", e.F15, s.F15)
+	}
+
+	if s.F16 != e.F16 {
+		t.Errorf("F16: expected %v, got %v", e.F16, s.F16)
+	}
+
+	if s.F17 == nil {
+		t.Errorf("F17: got nil")
+	} else if len(s.F17) != 3 {
+		t.Errorf("F17: expected 3 elements, got %v", s.F17)
+	} else {
+		if s.F17[0] != e.F17[0] ||
+			s.F17[1] != e.F17[1] ||
+			s.F17[2] != e.F17[2] {
+			t.Errorf("F17: expected %v, got %v", e.F17, s.F17)
 		}
 	}
 }
@@ -500,19 +544,4 @@ type S4 struct {
 	F01 int64
 	F02 float64
 	F03 bool
-}
-
-func TestConversionError(t *testing.T) {
-	data := map[string][]string{
-		"F01": {"foo"},
-		"F02": {"bar"},
-		"F03": {"baz"},
-	}
-	s := &S4{}
-	e := NewDecoder().Decode(s, data)
-
-	m := e.(MultiError)
-	if len(m) != 3 {
-		t.Errorf("Expected 3 errors, got %v", m)
-	}
 }

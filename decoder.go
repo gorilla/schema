@@ -70,6 +70,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		v = v.Field(idx)
 	}
 
+	// Don't even bother for unexported fields.
+	if !v.CanSet() {
+		return nil
+	}
+
 	// Dereference if needed.
 	t := v.Type()
 	if t.Kind() == reflect.Ptr {

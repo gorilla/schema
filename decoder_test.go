@@ -533,3 +533,20 @@ func TestEmptyValue(t *testing.T) {
         t.Errorf("Expected 1 values in F01")
     }
 }
+
+// ----------------------------------------------------------------------------
+
+type S6 struct {
+	id string
+}
+
+func TestUnexportedField(t *testing.T) {
+	data := map[string][]string{
+		"id": {"identifier"},
+	}
+	s := &S6{}
+	NewDecoder().Decode(s, data)
+	if s.id != "" {
+		t.Errorf("Unexported field expected to be ignored")
+	}
+}

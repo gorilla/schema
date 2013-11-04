@@ -52,7 +52,8 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 			return nil, invalidPath
 		}
 		if field = struc.get(keys[i]); field == nil {
-			return nil, invalidPath
+			// not found, return empty parts
+			return parts, nil
 		}
 		// Valid field. Append index.
 		path = append(path, field.idx)

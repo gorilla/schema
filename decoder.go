@@ -70,6 +70,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		v = v.Field(idx)
 	}
 
+	// Don't even bother for unexported fields.
+	if !v.CanSet() {
+		return nil
+	}
+
 	// Dereference if needed.
 	t := v.Type()
 	if t.Kind() == reflect.Ptr {
@@ -96,7 +101,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 
 	// Simple case.
 	if t.Kind() == reflect.Slice {
-		items := make([]reflect.Value, len(values))
+		var items []reflect.Value
 		elemT := t.Elem()
 		isPtrElem := elemT.Kind() == reflect.Ptr
 		if isPtrElem {
@@ -116,7 +121,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 					ptr.Elem().Set(item)
 					item = ptr
 				}
-				items[key] = item
+				items = append(items, item)
 			} else {
 				// If a single value is invalid should we give up
 				// or set a zero value?

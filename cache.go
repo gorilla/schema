@@ -28,7 +28,7 @@ func newCache() *cache {
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l    sync.Mutex
+	l    sync.RWMutex
 	m    map[reflect.Type]*structInfo
 	conv map[reflect.Type]Converter
 }
@@ -102,9 +102,9 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 
 // get returns a cached structInfo, creating it if necessary.
 func (c *cache) get(t reflect.Type) *structInfo {
-	c.l.Lock()
+	c.l.RLock()
 	info := c.m[t]
-	c.l.Unlock()
+	c.l.RUnlock()
 	if info == nil {
 		info = c.create(t)
 		c.l.Lock()

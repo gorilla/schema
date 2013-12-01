@@ -516,3 +516,37 @@ func TestConversionError(t *testing.T) {
 		t.Errorf("Expected 3 errors, got %v", m)
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+type S5 struct {
+    F01 []string
+}
+
+func TestEmptyValue(t *testing.T) {
+    data := map[string][]string{
+        "F01": {"", "foo"},
+    }
+    s := &S5{}
+    NewDecoder().Decode(s, data)
+    if len(s.F01) != 1 {
+        t.Errorf("Expected 1 values in F01")
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+type S6 struct {
+	id string
+}
+
+func TestUnexportedField(t *testing.T) {
+	data := map[string][]string{
+		"id": {"identifier"},
+	}
+	s := &S6{}
+	NewDecoder().Decode(s, data)
+	if s.id != "" {
+		t.Errorf("Unexported field expected to be ignored")
+	}
+}

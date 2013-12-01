@@ -135,7 +135,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 			// We are just ignoring empty values for now.
 			return nil
 		} else if conv := d.cache.conv[t]; conv != nil {
-			if value := conv(values[0]); value.IsValid() {
+			if value := conv(values[len(values)-1]); value.IsValid() {
 				v.Set(value)
 			} else {
 				return ConversionError{path, -1}

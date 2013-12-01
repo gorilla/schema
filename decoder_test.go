@@ -520,18 +520,18 @@ func TestConversionError(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 type S5 struct {
-    F01 []string
+	F01 []string
 }
 
 func TestEmptyValue(t *testing.T) {
-    data := map[string][]string{
-        "F01": {"", "foo"},
-    }
-    s := &S5{}
-    NewDecoder().Decode(s, data)
-    if len(s.F01) != 1 {
-        t.Errorf("Expected 1 values in F01")
-    }
+	data := map[string][]string{
+		"F01": {"", "foo"},
+	}
+	s := &S5{}
+	NewDecoder().Decode(s, data)
+	if len(s.F01) != 1 {
+		t.Errorf("Expected 1 values in F01")
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -548,5 +548,23 @@ func TestUnexportedField(t *testing.T) {
 	NewDecoder().Decode(s, data)
 	if s.id != "" {
 		t.Errorf("Unexported field expected to be ignored")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+type S7 struct {
+	ID string
+}
+
+func TestMultipleValues(t *testing.T) {
+	data := map[string][]string{
+		"ID": {"0", "1"},
+	}
+
+	s := &S7{}
+	NewDecoder().Decode(s, data)
+	if s.ID != "1" {
+		t.Errorf("Last defined value must be used when multiple values for same field are provided")
 	}
 }

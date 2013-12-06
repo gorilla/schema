@@ -20,6 +20,11 @@ type Decoder struct {
 	cache *cache
 }
 
+// Change the tag used to locate custome field aliases (default is "schema")
+func (d *Decoder) SetAliasTag(tag string) {
+	d.cache.tag = tag
+}
+
 // RegisterConverter registers a converter function for a custom type.
 func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) {
 	d.cache.conv[reflect.TypeOf(value)] = converterFunc

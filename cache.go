@@ -19,6 +19,7 @@ func newCache() *cache {
 	c := cache{
 		m:    make(map[reflect.Type]*structInfo),
 		conv: make(map[reflect.Type]Converter),
+		tag:  "schema",
 	}
 	for k, v := range converters {
 		c.conv[k] = v
@@ -31,6 +32,7 @@ type cache struct {
 	l    sync.RWMutex
 	m    map[reflect.Type]*structInfo
 	conv map[reflect.Type]Converter
+	tag  string
 }
 
 // parsePath parses a path in dotted notation verifying that it is a valid
@@ -119,7 +121,7 @@ func (c *cache) create(t reflect.Type) *structInfo {
 	info := &structInfo{fields: make(map[string]*fieldInfo)}
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		alias := fieldAlias(field)
+		alias := fieldAlias(field, c.tag)
 		if alias == "-" {
 			// Ignore this field.
 			continue
@@ -177,9 +179,9 @@ type pathPart struct {
 // ----------------------------------------------------------------------------
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField) string {
+func fieldAlias(field reflect.StructField, tagName string) string {
 	var alias string
-	if tag := field.Tag.Get("schema"); tag != "" {
+	if tag := field.Tag.Get(tagName); tag != "" {
 		// For now tags only support the name but let's folow the
 		// comma convention from encoding/json and others.
 		if idx := strings.Index(tag, ","); idx == -1 {

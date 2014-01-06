@@ -562,9 +562,27 @@ func TestMultipleValues(t *testing.T) {
 		"ID": {"0", "1"},
 	}
 
-	s := &S7{}
-	NewDecoder().Decode(s, data)
+	s := S7{}
+	NewDecoder().Decode(&s, data)
 	if s.ID != "1" {
 		t.Errorf("Last defined value must be used when multiple values for same field are provided")
+	}
+}
+
+type S8 struct {
+	ID string `json:"id"`
+}
+
+func TestSetAliasTag(t *testing.T) {
+	data := map[string][]string{
+		"id": {"foo"},
+	}
+
+	s := S8{}
+	dec := NewDecoder()
+	dec.SetAliasTag("json")
+	dec.Decode(&s, data)
+	if s.ID != "foo" {
+		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
 	}
 }

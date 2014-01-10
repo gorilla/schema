@@ -534,6 +534,22 @@ func TestEmptyValue(t *testing.T) {
 	}
 }
 
+func TestEmptyValueZeroEmpty(t *testing.T) {
+	data := map[string][]string{
+		"F01": {"", "foo"},
+	}
+	s := S5{}
+	d := NewDecoder()
+	d.ZeroEmpty(true)
+	err := d.Decode(&s, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.F01) != 2 {
+		t.Errorf("Expected 1 values in F01")
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 type S6 struct {
@@ -584,5 +600,52 @@ func TestSetAliasTag(t *testing.T) {
 	dec.Decode(&s, data)
 	if s.ID != "foo" {
 		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
+	}
+}
+
+func TestZeroEmpty(t *testing.T) {
+	data := map[string][]string{
+		"F01": {""},
+		"F03": {"true"},
+	}
+	s := S4{1, 1, false}
+	d := NewDecoder()
+	d.ZeroEmpty(true)
+
+	err := d.Decode(&s, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.F01 != 0 {
+		t.Errorf("F01: got %v, want %v", s.F01, 0)
+	}
+	if s.F02 != 1 {
+		t.Errorf("F02: got %v, want %v", s.F02, 1)
+	}
+	if s.F03 != true {
+		t.Errorf("F03: got %v, want %v", s.F03, true)
+	}
+}
+
+func TestNoZeroEmpty(t *testing.T) {
+	data := map[string][]string{
+		"F01": {""},
+		"F03": {"true"},
+	}
+	s := S4{1, 1, false}
+	d := NewDecoder()
+	d.ZeroEmpty(false)
+	err := d.Decode(&s, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.F01 != 1 {
+		t.Errorf("F01: got %v, want %v", s.F01, 1)
+	}
+	if s.F02 != 1 {
+		t.Errorf("F02: got %v, want %v", s.F02, 1)
+	}
+	if s.F03 != true {
+		t.Errorf("F03: got %v, want %v", s.F03, true)
 	}
 }

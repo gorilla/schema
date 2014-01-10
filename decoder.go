@@ -17,12 +17,25 @@ func NewDecoder() *Decoder {
 
 // Decoder decodes values from a map[string][]string to a struct.
 type Decoder struct {
-	cache *cache
+	cache     *cache
+	zeroEmpty bool
 }
 
-// Change the tag used to locate custome field aliases (default is "schema")
+// SetAliasTag changes the tag used to locate custome field aliases.
+// The default tag is "schema".
 func (d *Decoder) SetAliasTag(tag string) {
 	d.cache.tag = tag
+}
+
+// ZeroEmpty controls the behaviour of empty values in the map.
+// If z is true and a key in the map has the empty string as a value
+// then the corresponding struct field is set to the zero value.
+// If z is false then empty strings are ignored.
+//
+// The default value is false, that is empty values do not change
+// the value of the struct field.
+func (d *Decoder) ZeroEmpty(z bool) {
+	d.zeroEmpty = z
 }
 
 // RegisterConverter registers a converter function for a custom type.
@@ -118,8 +131,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		}
 		for key, value := range values {
 			if value == "" {
-				// We are just ignoring empty values for now.
-				continue
+				if d.zeroEmpty {
+					items = append(items, reflect.Zero(elemT))
+				}
 			} else if item := conv(value); item.IsValid() {
 				if isPtrElem {
 					ptr := reflect.New(elemT)
@@ -136,11 +150,15 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)
 		v.Set(value)
 	} else {
-		if values[0] == "" {
-			// We are just ignoring empty values for now.
-			return nil
+		// Use the last value provided
+		val := values[len(values)-1]
+
+		if val == "" {
+			if d.zeroEmpty {
+				v.Set(reflect.Zero(t))
+			}
 		} else if conv := d.cache.conv[t]; conv != nil {
-			if value := conv(values[len(values)-1]); value.IsValid() {
+			if value := conv(val); value.IsValid() {
 				v.Set(value)
 			} else {
 				return ConversionError{path, -1}

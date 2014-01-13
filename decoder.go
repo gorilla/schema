@@ -78,14 +78,14 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 	values []string) error {
 	// Get the field walking the struct fields by index.
-	for _, idx := range parts[0].path {
+	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
 			if v.IsNil() {
 				v.Set(reflect.New(v.Type().Elem()))
 			}
 			v = v.Elem()
 		}
-		v = v.Field(idx)
+		v = v.FieldByName(name)
 	}
 
 	// Don't even bother for unexported fields.

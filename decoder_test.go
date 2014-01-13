@@ -649,3 +649,24 @@ func TestNoZeroEmpty(t *testing.T) {
 		t.Errorf("F03: got %v, want %v", s.F03, true)
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+type S9 struct {
+	Id string
+}
+
+type S10 struct {
+	S9
+}
+
+func TestEmbeddedField(t *testing.T) {
+	data := map[string][]string{
+		"Id": {"identifier"},
+	}
+	s := &S10{}
+	NewDecoder().Decode(s, data)
+	if s.Id != "identifier" {
+		t.Errorf("Missing support for embedded fields")
+	}
+}

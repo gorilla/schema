@@ -137,7 +137,7 @@ func (c *cache) create(t reflect.Type) *structInfo {
 	return info
 }
 
-// createFields creates a fieldInfo for the given field.
+// createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, info *structInfo) {
 	alias := fieldAlias(field, c.tag)
 	if alias == "-" {

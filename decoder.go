@@ -17,8 +17,9 @@ func NewDecoder() *Decoder {
 
 // Decoder decodes values from a map[string][]string to a struct.
 type Decoder struct {
-	cache     *cache
-	zeroEmpty bool
+	cache             *cache
+	zeroEmpty         bool
+	ignoreUnknownKeys bool
 }
 
 // SetAliasTag changes the tag used to locate custome field aliases.
@@ -27,7 +28,8 @@ func (d *Decoder) SetAliasTag(tag string) {
 	d.cache.tag = tag
 }
 
-// ZeroEmpty controls the behaviour of empty values in the map.
+// ZeroEmpty controls the behaviour when the decoder encounters empty values
+// in a map.
 // If z is true and a key in the map has the empty string as a value
 // then the corresponding struct field is set to the zero value.
 // If z is false then empty strings are ignored.
@@ -36,6 +38,18 @@ func (d *Decoder) SetAliasTag(tag string) {
 // the value of the struct field.
 func (d *Decoder) ZeroEmpty(z bool) {
 	d.zeroEmpty = z
+}
+
+// IgnoreUnknownKeys controls the behaviour when the decoder encounters unknown
+// keys in the map.
+// If i is true and an unknown field is encountered, it is ignored. This is
+// similar to how unknown keys are handled by encoding/json.
+// If i is false then Decode will return an error. Note that any valid keys
+// will still be decoded in to the target struct.
+//
+// To preserve backwards compatibility, the default value is false.
+func (d *Decoder) IgnoreUnknownKeys(i bool) {
+	d.ignoreUnknownKeys = i
 }
 
 // RegisterConverter registers a converter function for a custom type.
@@ -64,7 +78,7 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 			if err = d.decode(v, path, parts, values); err != nil {
 				errors[path] = err
 			}
-		} else {
+		} else if !d.ignoreUnknownKeys {
 			errors[path] = fmt.Errorf("schema: invalid path %q", path)
 		}
 	}

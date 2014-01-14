@@ -670,3 +670,28 @@ func TestEmbeddedField(t *testing.T) {
 		t.Errorf("Missing support for embedded fields")
 	}
 }
+
+func TestInvalidPath(t *testing.T) {
+	data := map[string][]string{
+		"Foo.Bar": {"baz"},
+	}
+	s := S9{}
+	err := NewDecoder().Decode(&s, data)
+	expectedErr := `schema: invalid path "Foo.Bar"`
+	if err.Error() != expectedErr {
+		t.Fatalf("got %q, want %q", err, expectedErr)
+	}
+}
+
+func TestInvalidPathIgnoreUnknownKeys(t *testing.T) {
+	data := map[string][]string{
+		"Foo.Bar": {"baz"},
+	}
+	s := S9{}
+	dec := NewDecoder()
+	dec.IgnoreUnknownKeys(true)
+	err := dec.Decode(&s, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

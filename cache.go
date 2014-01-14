@@ -39,7 +39,7 @@ type cache struct {
 // path to a struct field.
 //
 // It returns "path parts" which contain indices to fields to be used by
-// reflect.Value.FieldByIndex(). Multiple parts are required for slices of
+// reflect.Value.FieldByString(). Multiple parts are required for slices of
 // structs.
 func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 	var struc *structInfo

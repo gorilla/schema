@@ -387,6 +387,20 @@ func TestDefaultConverters(t *testing.T) {
 	}
 }
 
+func TestOn(t *testing.T) {
+	v := map[string][]string{
+		"F01": {"on"},
+	}
+	s := S3{}
+	err := NewDecoder().Decode(&s, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.F01 {
+		t.Fatal("Value was not set to true")
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 func TestInlineStruct(t *testing.T) {

@@ -48,7 +48,9 @@ var converters = map[reflect.Type]Converter{
 }
 
 func convertBool(value string) reflect.Value {
-	if v, err := strconv.ParseBool(value); err == nil {
+	if value == "on" {
+		return reflect.ValueOf(true)
+	} else if v, err := strconv.ParseBool(value); err == nil {
 		return reflect.ValueOf(v)
 	}
 	return invalidValue

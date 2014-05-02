@@ -108,7 +108,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 	info := c.m[t]
 	c.l.RUnlock()
 	if info == nil {
-		info = c.create(t)
+		info = c.create(t, nil)
 		c.l.Lock()
 		c.m[t] = info
 		c.l.Unlock()
@@ -117,8 +117,10 @@ func (c *cache) get(t reflect.Type) *structInfo {
 }
 
 // creat creates a structInfo with meta-data about a struct.
-func (c *cache) create(t reflect.Type) *structInfo {
-	info := &structInfo{fields: make(map[string]*fieldInfo)}
+func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
+	if info == nil {
+		info = &structInfo{fields: make(map[string]*fieldInfo)}
+	}
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		if field.Anonymous {
@@ -127,9 +129,7 @@ func (c *cache) create(t reflect.Type) *structInfo {
 				ft = ft.Elem()
 			}
 			if ft.Kind() == reflect.Struct {
-				for j := 0; j < ft.NumField(); j++ {
-					c.createField(ft.Field(j), info)
-				}
+				c.create(ft, info)
 			}
 		}
 		c.createField(field, info)

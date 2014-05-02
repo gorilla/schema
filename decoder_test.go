@@ -685,6 +685,21 @@ func TestEmbeddedField(t *testing.T) {
 	}
 }
 
+type S11 struct {
+	S10
+}
+
+func TestMultipleLevelEmbeddedField(t *testing.T) {
+	data := map[string][]string{
+		"Id": {"identifier"},
+	}
+	s := &S11{}
+	err := NewDecoder().Decode(s, data)
+	if s.Id != "identifier" {
+		t.Errorf("Missing support for multiple-level embedded fields (%v)", err)
+	}
+}
+
 func TestInvalidPath(t *testing.T) {
 	data := map[string][]string{
 		"Foo.Bar": {"baz"},

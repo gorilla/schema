@@ -289,6 +289,35 @@ func TestAll(t *testing.T) {
 	}
 }
 
+func BenchmarkAll(b *testing.B) {
+	v := map[string][]string{
+		"f1":             {"1"},
+		"f2":             {"2"},
+		"f3":             {"31", "32"},
+		"f4":             {"41", "42"},
+		"f5":             {"51", "52"},
+		"f6":             {"61", "62"},
+		"f7.f1":          {"71", "72"},
+		"f8.f8.f7.f1":    {"81", "82"},
+		"f9":             {"9"},
+		"f10.0.f10.0.f6": {"101", "102"},
+		"f10.0.f10.1.f6": {"103", "104"},
+		"f11.0.f11.0.f6": {"111", "112"},
+		"f11.0.f11.1.f6": {"113", "114"},
+		"f12.0.f12.0.f6": {"121", "122"},
+		"f12.0.f12.1.f6": {"123", "124"},
+		"f13.0.f13.0.f6": {"131", "132"},
+		"f13.0.f13.1.f6": {"133", "134"},
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		s := &S1{}
+		_ = NewDecoder().Decode(s, v)
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 type S3 struct {
@@ -722,5 +751,282 @@ func TestInvalidPathIgnoreUnknownKeys(t *testing.T) {
 	err := dec.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+type S1NT struct {
+	F1  int
+	F2  *int
+	F3  []int
+	F4  []*int
+	F5  *[]int
+	F6  *[]*int
+	F7  S2
+	F8  *S1
+	F9  int `schema:"-"`
+	F10 []S1
+	F11 []*S1
+	F12 *[]S1
+	F13 *[]*S1
+}
+
+func TestAllNT(t *testing.T) {
+	v := map[string][]string{
+		"f1":             {"1"},
+		"f2":             {"2"},
+		"f3":             {"31", "32"},
+		"f4":             {"41", "42"},
+		"f5":             {"51", "52"},
+		"f6":             {"61", "62"},
+		"f7.f1":          {"71", "72"},
+		"f8.f8.f7.f1":    {"81", "82"},
+		"f9":             {"9"},
+		"f10.0.f10.0.f6": {"101", "102"},
+		"f10.0.f10.1.f6": {"103", "104"},
+		"f11.0.f11.0.f6": {"111", "112"},
+		"f11.0.f11.1.f6": {"113", "114"},
+		"f12.0.f12.0.f6": {"121", "122"},
+		"f12.0.f12.1.f6": {"123", "124"},
+		"f13.0.f13.0.f6": {"131", "132"},
+		"f13.0.f13.1.f6": {"133", "134"},
+	}
+	f2 := 2
+	f41, f42 := 41, 42
+	f61, f62 := 61, 62
+	f71, f72 := 71, 72
+	f81, f82 := 81, 82
+	f101, f102, f103, f104 := 101, 102, 103, 104
+	f111, f112, f113, f114 := 111, 112, 113, 114
+	f121, f122, f123, f124 := 121, 122, 123, 124
+	f131, f132, f133, f134 := 131, 132, 133, 134
+	e := S1NT{
+		F1: 1,
+		F2: &f2,
+		F3: []int{31, 32},
+		F4: []*int{&f41, &f42},
+		F5: &[]int{51, 52},
+		F6: &[]*int{&f61, &f62},
+		F7: S2{
+			F01: &[]*int{&f71, &f72},
+		},
+		F8: &S1{
+			F08: &S1{
+				F07: S2{
+					F01: &[]*int{&f81, &f82},
+				},
+			},
+		},
+		F9: 0,
+		F10: []S1{
+			S1{
+				F10: []S1{
+					S1{F06: &[]*int{&f101, &f102}},
+					S1{F06: &[]*int{&f103, &f104}},
+				},
+			},
+		},
+		F11: []*S1{
+			&S1{
+				F11: []*S1{
+					&S1{F06: &[]*int{&f111, &f112}},
+					&S1{F06: &[]*int{&f113, &f114}},
+				},
+			},
+		},
+		F12: &[]S1{
+			S1{
+				F12: &[]S1{
+					S1{F06: &[]*int{&f121, &f122}},
+					S1{F06: &[]*int{&f123, &f124}},
+				},
+			},
+		},
+		F13: &[]*S1{
+			&S1{
+				F13: &[]*S1{
+					&S1{F06: &[]*int{&f131, &f132}},
+					&S1{F06: &[]*int{&f133, &f134}},
+				},
+			},
+		},
+	}
+
+	s := &S1NT{}
+	_ = NewDecoder().Decode(s, v)
+
+	vals := func(values []*int) []int {
+		r := make([]int, len(values))
+		for k, v := range values {
+			r[k] = *v
+		}
+		return r
+	}
+
+	if s.F1 != e.F1 {
+		t.Errorf("f1: expected %v, got %v", e.F1, s.F1)
+	}
+	if s.F2 == nil {
+		t.Errorf("f2: expected %v, got nil", *e.F2)
+	} else if *s.F2 != *e.F2 {
+		t.Errorf("f2: expected %v, got %v", *e.F2, *s.F2)
+	}
+	if s.F3 == nil {
+		t.Errorf("f3: expected %v, got nil", e.F3)
+	} else if len(s.F3) != 2 || s.F3[0] != e.F3[0] || s.F3[1] != e.F3[1] {
+		t.Errorf("f3: expected %v, got %v", e.F3, s.F3)
+	}
+	if s.F4 == nil {
+		t.Errorf("f4: expected %v, got nil", e.F4)
+	} else {
+		if len(s.F4) != 2 || *(s.F4)[0] != *(e.F4)[0] || *(s.F4)[1] != *(e.F4)[1] {
+			t.Errorf("f4: expected %v, got %v", vals(e.F4), vals(s.F4))
+		}
+	}
+	if s.F5 == nil {
+		t.Errorf("f5: expected %v, got nil", e.F5)
+	} else {
+		sF5, eF5 := *s.F5, *e.F5
+		if len(sF5) != 2 || sF5[0] != eF5[0] || sF5[1] != eF5[1] {
+			t.Errorf("f5: expected %v, got %v", eF5, sF5)
+		}
+	}
+	if s.F6 == nil {
+		t.Errorf("f6: expected %v, got nil", vals(*e.F6))
+	} else {
+		sF6, eF6 := *s.F6, *e.F6
+		if len(sF6) != 2 || *(sF6)[0] != *(eF6)[0] || *(sF6)[1] != *(eF6)[1] {
+			t.Errorf("f6: expected %v, got %v", vals(eF6), vals(sF6))
+		}
+	}
+	if s.F7.F01 == nil {
+		t.Errorf("f7.f1: expected %v, got nil", vals(*e.F7.F01))
+	} else {
+		sF7, eF7 := *s.F7.F01, *e.F7.F01
+		if len(sF7) != 2 || *(sF7)[0] != *(eF7)[0] || *(sF7)[1] != *(eF7)[1] {
+			t.Errorf("f7.f1: expected %v, got %v", vals(eF7), vals(sF7))
+		}
+	}
+	if s.F8 == nil {
+		t.Errorf("f8: got nil")
+	} else if s.F8.F08 == nil {
+		t.Errorf("f8.f8: got nil")
+	} else if s.F8.F08.F07.F01 == nil {
+		t.Errorf("f8.f8.f7.f1: expected %v, got nil", vals(*e.F8.F08.F07.F01))
+	} else {
+		sF8, eF8 := *s.F8.F08.F07.F01, *e.F8.F08.F07.F01
+		if len(sF8) != 2 || *(sF8)[0] != *(eF8)[0] || *(sF8)[1] != *(eF8)[1] {
+			t.Errorf("f8.f8.f7.f1: expected %v, got %v", vals(eF8), vals(sF8))
+		}
+	}
+	if s.F9 != e.F9 {
+		t.Errorf("f9: expected %v, got %v", e.F9, s.F9)
+	}
+	if s.F10 == nil {
+		t.Errorf("f10: got nil")
+	} else if len(s.F10) != 1 {
+		t.Errorf("f10: expected 1 element, got %v", s.F10)
+	} else {
+		if len(s.F10[0].F10) != 2 {
+			t.Errorf("f10.0.f10: expected 1 element, got %v", s.F10[0].F10)
+		} else {
+			sF10, eF10 := *s.F10[0].F10[0].F06, *e.F10[0].F10[0].F06
+			if sF10 == nil {
+				t.Errorf("f10.0.f10.0.f6: expected %v, got nil", vals(eF10))
+			} else {
+				if len(sF10) != 2 || *(sF10)[0] != *(eF10)[0] || *(sF10)[1] != *(eF10)[1] {
+					t.Errorf("f10.0.f10.0.f6: expected %v, got %v", vals(eF10), vals(sF10))
+				}
+			}
+			sF10, eF10 = *s.F10[0].F10[1].F06, *e.F10[0].F10[1].F06
+			if sF10 == nil {
+				t.Errorf("f10.0.f10.0.f6: expected %v, got nil", vals(eF10))
+			} else {
+				if len(sF10) != 2 || *(sF10)[0] != *(eF10)[0] || *(sF10)[1] != *(eF10)[1] {
+					t.Errorf("f10.0.f10.0.f6: expected %v, got %v", vals(eF10), vals(sF10))
+				}
+			}
+		}
+	}
+	if s.F11 == nil {
+		t.Errorf("f11: got nil")
+	} else if len(s.F11) != 1 {
+		t.Errorf("f11: expected 1 element, got %v", s.F11)
+	} else {
+		if len(s.F11[0].F11) != 2 {
+			t.Errorf("f11.0.f11: expected 1 element, got %v", s.F11[0].F11)
+		} else {
+			sF11, eF11 := *s.F11[0].F11[0].F06, *e.F11[0].F11[0].F06
+			if sF11 == nil {
+				t.Errorf("f11.0.f11.0.f6: expected %v, got nil", vals(eF11))
+			} else {
+				if len(sF11) != 2 || *(sF11)[0] != *(eF11)[0] || *(sF11)[1] != *(eF11)[1] {
+					t.Errorf("f11.0.f11.0.f6: expected %v, got %v", vals(eF11), vals(sF11))
+				}
+			}
+			sF11, eF11 = *s.F11[0].F11[1].F06, *e.F11[0].F11[1].F06
+			if sF11 == nil {
+				t.Errorf("f11.0.f11.0.f6: expected %v, got nil", vals(eF11))
+			} else {
+				if len(sF11) != 2 || *(sF11)[0] != *(eF11)[0] || *(sF11)[1] != *(eF11)[1] {
+					t.Errorf("f11.0.f11.0.f6: expected %v, got %v", vals(eF11), vals(sF11))
+				}
+			}
+		}
+	}
+	if s.F12 == nil {
+		t.Errorf("f12: got nil")
+	} else if len(*s.F12) != 1 {
+		t.Errorf("f12: expected 1 element, got %v", *s.F12)
+	} else {
+		sF12, eF12 := *(s.F12), *(e.F12)
+		if len(*sF12[0].F12) != 2 {
+			t.Errorf("f12.0.f12: expected 1 element, got %v", *sF12[0].F12)
+		} else {
+			sF122, eF122 := *(*sF12[0].F12)[0].F06, *(*eF12[0].F12)[0].F06
+			if sF122 == nil {
+				t.Errorf("f12.0.f12.0.f6: expected %v, got nil", vals(eF122))
+			} else {
+				if len(sF122) != 2 || *(sF122)[0] != *(eF122)[0] || *(sF122)[1] != *(eF122)[1] {
+					t.Errorf("f12.0.f12.0.f6: expected %v, got %v", vals(eF122), vals(sF122))
+				}
+			}
+			sF122, eF122 = *(*sF12[0].F12)[1].F06, *(*eF12[0].F12)[1].F06
+			if sF122 == nil {
+				t.Errorf("f12.0.f12.0.f6: expected %v, got nil", vals(eF122))
+			} else {
+				if len(sF122) != 2 || *(sF122)[0] != *(eF122)[0] || *(sF122)[1] != *(eF122)[1] {
+					t.Errorf("f12.0.f12.0.f6: expected %v, got %v", vals(eF122), vals(sF122))
+				}
+			}
+		}
+	}
+	if s.F13 == nil {
+		t.Errorf("f13: got nil")
+	} else if len(*s.F13) != 1 {
+		t.Errorf("f13: expected 1 element, got %v", *s.F13)
+	} else {
+		sF13, eF13 := *(s.F13), *(e.F13)
+		if len(*sF13[0].F13) != 2 {
+			t.Errorf("f13.0.f13: expected 1 element, got %v", *sF13[0].F13)
+		} else {
+			sF132, eF132 := *(*sF13[0].F13)[0].F06, *(*eF13[0].F13)[0].F06
+			if sF132 == nil {
+				t.Errorf("f13.0.f13.0.f6: expected %v, got nil", vals(eF132))
+			} else {
+				if len(sF132) != 2 || *(sF132)[0] != *(eF132)[0] || *(sF132)[1] != *(eF132)[1] {
+					t.Errorf("f13.0.f13.0.f6: expected %v, got %v", vals(eF132), vals(sF132))
+				}
+			}
+			sF132, eF132 = *(*sF13[0].F13)[1].F06, *(*eF13[0].F13)[1].F06
+			if sF132 == nil {
+				t.Errorf("f13.0.f13.0.f6: expected %v, got nil", vals(eF132))
+			} else {
+				if len(sF132) != 2 || *(sF132)[0] != *(eF132)[0] || *(sF132)[1] != *(eF132)[1] {
+					t.Errorf("f13.0.f13.0.f6: expected %v, got %v", vals(eF132), vals(sF132))
+				}
+			}
+		}
 	}
 }

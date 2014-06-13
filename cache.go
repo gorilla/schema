@@ -119,7 +119,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 // creat creates a structInfo with meta-data about a struct.
 func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 	if info == nil {
-		info = &structInfo{fields: make(map[string]*fieldInfo)}
+		info = &structInfo{fields: []*fieldInfo{}}
 	}
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -164,27 +164,34 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		}
 	}
 
-	info.fields[alias] = &fieldInfo{
-		typ:  field.Type,
-		name: field.Name,
-		ss:   isSlice && isStruct,
-	}
+	info.fields = append(info.fields, &fieldInfo{
+		typ:   field.Type,
+		name:  field.Name,
+		ss:    isSlice && isStruct,
+		alias: alias,
+	})
 }
 
 // ----------------------------------------------------------------------------
 
 type structInfo struct {
-	fields map[string]*fieldInfo
+	fields []*fieldInfo
 }
 
 func (i *structInfo) get(alias string) *fieldInfo {
-	return i.fields[alias]
+	for _, field := range i.fields {
+		if strings.EqualFold(field.alias, alias) {
+			return field
+		}
+	}
+	return nil
 }
 
 type fieldInfo struct {
-	typ  reflect.Type
-	name string // field name in the struct.
-	ss   bool   // true if this is a slice of structs.
+	typ   reflect.Type
+	name  string // field name in the struct.
+	ss    bool   // true if this is a slice of structs.
+	alias string
 }
 
 type pathPart struct {

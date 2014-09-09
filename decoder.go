@@ -164,8 +164,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)
 		v.Set(value)
 	} else {
-		// Use the last value provided
-		val := values[len(values)-1]
+		val := ""
+		// Use the last value provided if any values were provided
+		if len(values) > 0 {
+			val = values[len(values)-1]
+		}
 
 		if val == "" {
 			if d.zeroEmpty {

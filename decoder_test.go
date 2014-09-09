@@ -24,6 +24,7 @@ type S1 struct {
 	F11 []*S1   `schema:"f11"`
 	F12 *[]S1   `schema:"f12"`
 	F13 *[]*S1  `schema:"f13"`
+	F14 int     `schema:"f14"`
 }
 
 type S2 struct {
@@ -49,6 +50,7 @@ func TestAll(t *testing.T) {
 		"f12.0.f12.1.f6": {"123", "124"},
 		"f13.0.f13.0.f6": {"131", "132"},
 		"f13.0.f13.1.f6": {"133", "134"},
+		"f14":            {},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -109,6 +111,7 @@ func TestAll(t *testing.T) {
 				},
 			},
 		},
+		F14: 0,
 	}
 
 	s := &S1{}
@@ -286,6 +289,9 @@ func TestAll(t *testing.T) {
 				}
 			}
 		}
+	}
+	if s.F14 != e.F14 {
+		t.Errorf("f14: expected %v, got %v", e.F14, s.F14)
 	}
 }
 

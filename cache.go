@@ -139,8 +139,8 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 
 // createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, info *structInfo) {
-	alias := fieldAlias(field, c.tag)
-	if alias == "-" {
+	aliases := fieldAliases(field, c.tag)
+	if aliases[0] == "-" {
 		// Ignore this field.
 		return
 	}
@@ -164,12 +164,14 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		}
 	}
 
-	info.fields = append(info.fields, &fieldInfo{
-		typ:   field.Type,
-		name:  field.Name,
-		ss:    isSlice && isStruct,
-		alias: alias,
-	})
+	for _, alias := range aliases {
+		info.fields = append(info.fields, &fieldInfo{
+			typ:   field.Type,
+			name:  field.Name,
+			ss:    isSlice && isStruct,
+			alias: alias,
+		})
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -203,7 +205,7 @@ type pathPart struct {
 // ----------------------------------------------------------------------------
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField, tagName string) string {
+func fieldAliases(field reflect.StructField, tagName string) []string {
 	var alias string
 	if tag := field.Tag.Get(tagName); tag != "" {
 		// For now tags only support the name but let's folow the
@@ -217,5 +219,5 @@ func fieldAlias(field reflect.StructField, tagName string) string {
 	if alias == "" {
 		alias = field.Name
 	}
-	return alias
+	return strings.Split(alias, "|")
 }

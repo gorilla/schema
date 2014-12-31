@@ -1036,3 +1036,44 @@ func TestAllNT(t *testing.T) {
 		}
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+type S12A struct {
+	ID []int
+}
+
+func TestCSVSlice(t *testing.T) {
+	data := map[string][]string{
+		"ID": {"0,1"},
+	}
+
+	s := S12A{}
+	NewDecoder().Decode(&s, data)
+	if len(s.ID) != 2 {
+		t.Errorf("Expected two values in the result list, got %+v", s.ID)
+	}
+	if s.ID[0] != 0 || s.ID[1] != 1 {
+		t.Errorf("Expected []{0, 1} got %+v", s)
+	}
+}
+
+type S12B struct {
+	ID []string
+}
+
+//Decode should not split on , into a slice for string only
+func TestCSVStringSlice(t *testing.T) {
+	data := map[string][]string{
+		"ID": {"0,1"},
+	}
+
+	s := S12B{}
+	NewDecoder().Decode(&s, data)
+	if len(s.ID) != 1 {
+		t.Errorf("Expected one value in the result list, got %+v", s.ID)
+	}
+	if s.ID[0] != "0,1" {
+		t.Errorf("Expected []{0, 1} got %+v", s)
+	}
+}

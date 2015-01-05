@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // NewDecoder returns a new Decoder.
@@ -156,9 +157,28 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 				}
 				items = append(items, item)
 			} else {
-				// If a single value is invalid should we give up
-				// or set a zero value?
-				return ConversionError{path, key}
+				if strings.Contains(value, ",") {
+					values := strings.Split(value, ",")
+					for _, value := range values {
+						if value == "" {
+							if d.zeroEmpty {
+								items = append(items, reflect.Zero(elemT))
+							}
+						} else if item := conv(value); item.IsValid() {
+							if isPtrElem {
+								ptr := reflect.New(elemT)
+								ptr.Elem().Set(item)
+								item = ptr
+							}
+							items = append(items, item)
+						} else {
+							return ConversionError{path, key}
+						}
+					}
+
+				} else {
+					return ConversionError{path, key}
+				}
 			}
 		}
 		value := reflect.Append(reflect.MakeSlice(t, 0, 0), items...)

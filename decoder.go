@@ -5,6 +5,7 @@
 package schema
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"reflect"
@@ -142,6 +143,8 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		}
 		conv := d.cache.conv[elemT]
 		if conv == nil {
+			// As we are not dealing with slice of structs here, we don't need to check if the type
+			// implements TextUnmarshaler interface
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
 		for key, value := range values {
@@ -201,7 +204,21 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 				return ConversionError{path, -1}
 			}
 		} else {
-			return fmt.Errorf("schema: converter not found for %v", t)
+			// When there's no registered conversion for the custom type, we will check if the type
+			// implements the TextUnmarshaler interface. As the UnmarshalText function should be applied
+			// to the pointer of the type, we convert the value to pointer.
+			if v.CanAddr() {
+				v = v.Addr()
+			}
+
+			if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+				if err := u.UnmarshalText([]byte(val)); err != nil {
+					return ConversionError{path, -1}
+				}
+
+			} else {
+				return fmt.Errorf("schema: converter not found for %v", t)
+			}
 		}
 	}
 	return nil

@@ -175,12 +175,18 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 							}
 							items = append(items, item)
 						} else {
-							return ConversionError{path, key}
+							return ConversionError{
+								Key:   path,
+								Index: key,
+							}
 						}
 					}
 
 				} else {
-					return ConversionError{path, key}
+					return ConversionError{
+						Key:   path,
+						Index: key,
+					}
 				}
 			}
 		}
@@ -201,7 +207,10 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 			if value := conv(val); value.IsValid() {
 				v.Set(value)
 			} else {
-				return ConversionError{path, -1}
+				return ConversionError{
+					Key:   path,
+					Index: -1,
+				}
 			}
 		} else {
 			// When there's no registered conversion for the custom type, we will check if the type
@@ -213,7 +222,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 
 			if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
 				if err := u.UnmarshalText([]byte(val)); err != nil {
-					return ConversionError{path, -1}
+					return ConversionError{
+						Key:   path,
+						Index: -1,
+						Err:   err,
+					}
 				}
 
 			} else {
@@ -230,14 +243,24 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 type ConversionError struct {
 	Key   string // key from the source map.
 	Index int    // index for multi-value fields; -1 for single-value fields.
+	Err   error  // low-level error (when it exists)
 }
 
 func (e ConversionError) Error() string {
+	var output string
+
 	if e.Index < 0 {
-		return fmt.Sprintf("schema: error converting value for %q", e.Key)
+		output = fmt.Sprintf("schema: error converting value for %q", e.Key)
+	} else {
+		output = fmt.Sprintf("schema: error converting value for index %d of %q",
+			e.Index, e.Key)
 	}
-	return fmt.Sprintf("schema: error converting value for index %d of %q",
-		e.Index, e.Key)
+
+	if e.Err != nil {
+		output = fmt.Sprintf("%s. Details: %s", e.Err)
+	}
+
+	return output
 }
 
 // MultiError stores multiple decoding errors.

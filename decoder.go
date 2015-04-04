@@ -23,7 +23,7 @@ type Decoder struct {
 	ignoreUnknownKeys bool
 }
 
-// SetAliasTag changes the tag used to locate custome field aliases.
+// SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
 func (d *Decoder) SetAliasTag(tag string) {
 	d.cache.tag = tag
@@ -175,7 +175,6 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 							return ConversionError{path, key}
 						}
 					}
-
 				} else {
 					return ConversionError{path, key}
 				}

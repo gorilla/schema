@@ -116,7 +116,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 	return info
 }
 
-// creat creates a structInfo with meta-data about a struct.
+// create creates a structInfo with meta-data about a struct.
 func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 	if info == nil {
 		info = &structInfo{fields: []*fieldInfo{}}
@@ -206,7 +206,7 @@ type pathPart struct {
 func fieldAlias(field reflect.StructField, tagName string) string {
 	var alias string
 	if tag := field.Tag.Get(tagName); tag != "" {
-		// For now tags only support the name but let's folow the
+		// For now tags only support the name but let's follow the
 		// comma convention from encoding/json and others.
 		if idx := strings.Index(tag, ","); idx == -1 {
 			alias = tag

@@ -1113,3 +1113,14 @@ func TestInvalidPathInCacheParsePath(t *testing.T) {
 		t.Errorf("invalid path in cache.parsePath should return an error.")
 	}
 }
+
+// issue 32
+func TestDecodeToTypedField(t *testing.T) {
+	type Aa bool
+	s1 := &struct{ Aa }{}
+	v1 := map[string][]string{"Aa": {"true"}}
+	NewDecoder().Decode(s1, v1)
+	if s1.Aa != Aa(true) {
+		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
+	}
+}

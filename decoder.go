@@ -55,7 +55,7 @@ func (d *Decoder) IgnoreUnknownKeys(i bool) {
 
 // RegisterConverter registers a converter function for a custom type.
 func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) {
-	d.cache.conv[reflect.TypeOf(value)] = converterFunc
+	d.cache.conv[reflect.TypeOf(value).Kind()] = converterFunc
 }
 
 // Decode decodes a map[string][]string to a struct.
@@ -140,7 +140,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		if isPtrElem {
 			elemT = elemT.Elem()
 		}
-		conv := d.cache.conv[elemT]
+		conv := d.cache.conv[elemT.Kind()]
 		if conv == nil {
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
@@ -193,9 +193,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
-		} else if conv := d.cache.conv[t]; conv != nil {
+		} else if conv := d.cache.conv[t.Kind()]; conv != nil {
 			if value := conv(val); value.IsValid() {
-				v.Set(value)
+				v.Set(value.Convert(t))
 			} else {
 				return ConversionError{path, -1}
 			}

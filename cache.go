@@ -50,6 +50,9 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 	path := make([]string, 0)
 	keys := strings.Split(p, ".")
 	for i := 0; i < len(keys); i++ {
+		if t.Kind() != reflect.Struct {
+			return nil, invalidPath
+		}
 		if struc = c.get(t); struc == nil {
 			return nil, invalidPath
 		}
@@ -87,10 +90,10 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 					t = t.Elem()
 				}
 			}
-		} else if field.typ.Kind() == reflect.Struct {
-			t = field.typ
-		} else if field.typ.Kind() == reflect.Ptr && field.typ.Elem().Kind() == reflect.Struct {
+		} else if field.typ.Kind() == reflect.Ptr {
 			t = field.typ.Elem()
+		} else {
+			t = field.typ
 		}
 	}
 	// Add the remaining.

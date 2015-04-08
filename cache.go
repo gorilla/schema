@@ -17,9 +17,10 @@ var invalidPath = errors.New("schema: invalid path")
 // newCache returns a new cache.
 func newCache() *cache {
 	c := cache{
-		m:    make(map[reflect.Type]*structInfo),
-		conv: make(map[reflect.Kind]Converter),
-		tag:  "schema",
+		m:       make(map[reflect.Type]*structInfo),
+		conv:    make(map[reflect.Kind]Converter),
+		regconv: make(map[reflect.Type]Converter),
+		tag:     "schema",
 	}
 	for k, v := range converters {
 		c.conv[k] = v
@@ -29,10 +30,11 @@ func newCache() *cache {
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l    sync.RWMutex
-	m    map[reflect.Type]*structInfo
-	conv map[reflect.Kind]Converter
-	tag  string
+	l       sync.RWMutex
+	m       map[reflect.Type]*structInfo
+	conv    map[reflect.Kind]Converter
+	regconv map[reflect.Type]Converter
+	tag     string
 }
 
 // parsePath parses a path in dotted notation verifying that it is a valid
@@ -173,6 +175,15 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		ss:    isSlice && isStruct,
 		alias: alias,
 	})
+}
+
+// converter returns the converter for a type.
+func (c *cache) converter(t reflect.Type) Converter {
+	conv := c.regconv[t]
+	if conv == nil {
+		conv = c.conv[t.Kind()]
+	}
+	return conv
 }
 
 // ----------------------------------------------------------------------------

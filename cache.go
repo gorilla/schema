@@ -18,7 +18,7 @@ var invalidPath = errors.New("schema: invalid path")
 func newCache() *cache {
 	c := cache{
 		m:    make(map[reflect.Type]*structInfo),
-		conv: make(map[reflect.Kind]Converter),
+		conv: make(map[reflect.Type]Converter),
 		tag:  "schema",
 	}
 	for k, v := range converters {
@@ -31,7 +31,7 @@ func newCache() *cache {
 type cache struct {
 	l    sync.RWMutex
 	m    map[reflect.Type]*structInfo
-	conv map[reflect.Kind]Converter
+	conv map[reflect.Type]Converter
 	tag  string
 }
 
@@ -161,7 +161,7 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		}
 	}
 	if isStruct = ft.Kind() == reflect.Struct; !isStruct {
-		if conv := c.conv[ft.Kind()]; conv == nil {
+		if conv := c.conv[ft]; conv == nil {
 			// Type is not supported.
 			return
 		}

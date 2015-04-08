@@ -18,7 +18,7 @@ var invalidPath = errors.New("schema: invalid path")
 func newCache() *cache {
 	c := cache{
 		m:    make(map[reflect.Type]*structInfo),
-		conv: make(map[reflect.Kind]Converter),
+		conv: make(map[reflect.Type]Converter),
 		tag:  "schema",
 	}
 	for k, v := range converters {
@@ -31,7 +31,7 @@ func newCache() *cache {
 type cache struct {
 	l    sync.RWMutex
 	m    map[reflect.Type]*structInfo
-	conv map[reflect.Kind]Converter
+	conv map[reflect.Type]Converter
 	tag  string
 }
 
@@ -50,9 +50,6 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 	path := make([]string, 0)
 	keys := strings.Split(p, ".")
 	for i := 0; i < len(keys); i++ {
-		if t.Kind() != reflect.Struct {
-			return nil, invalidPath
-		}
 		if struc = c.get(t); struc == nil {
 			return nil, invalidPath
 		}
@@ -90,10 +87,10 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 					t = t.Elem()
 				}
 			}
-		} else if field.typ.Kind() == reflect.Ptr {
-			t = field.typ.Elem()
-		} else {
+		} else if field.typ.Kind() == reflect.Struct {
 			t = field.typ
+		} else if field.typ.Kind() == reflect.Ptr && field.typ.Elem().Kind() == reflect.Struct {
+			t = field.typ.Elem()
 		}
 	}
 	// Add the remaining.
@@ -161,7 +158,7 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		}
 	}
 	if isStruct = ft.Kind() == reflect.Struct; !isStruct {
-		if conv := c.conv[ft.Kind()]; conv == nil {
+		if conv := c.conv[ft]; conv == nil {
 			// Type is not supported.
 			return
 		}

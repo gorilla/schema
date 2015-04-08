@@ -5,7 +5,7 @@
 package schema
 
 import (
-	"reflect"
+	//"reflect"
 	"testing"
 )
 
@@ -1075,52 +1075,5 @@ func TestCSVStringSlice(t *testing.T) {
 	}
 	if s.ID[0] != "0,1" {
 		t.Errorf("Expected []{0, 1} got %+v", s)
-	}
-}
-
-//Invalid data provided by client should not panic (github issue 33)
-func TestInvalidDataProvidedByClient(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("Panicked calling decoder.Decode: %v", r)
-		}
-	}()
-
-	type S struct {
-		f string
-	}
-
-	data := map[string][]string{
-		"f.f": {"v"},
-	}
-
-	err := NewDecoder().Decode(new(S), data)
-	if err == nil {
-		t.Errorf("invalid path in decoder.Decode should return an error.")
-	}
-}
-
-// underlying cause of error in issue 33
-func TestInvalidPathInCacheParsePath(t *testing.T) {
-	type S struct {
-		f string
-	}
-
-	typ := reflect.ValueOf(new(S)).Elem().Type()
-	c := newCache()
-	_, err := c.parsePath("f.f", typ)
-	if err == nil {
-		t.Errorf("invalid path in cache.parsePath should return an error.")
-	}
-}
-
-// issue 32
-func TestDecodeToTypedField(t *testing.T) {
-	type Aa bool
-	s1 := &struct{ Aa }{}
-	v1 := map[string][]string{"Aa": {"true"}}
-	NewDecoder().Decode(s1, v1)
-	if s1.Aa != Aa(true) {
-		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
 	}
 }

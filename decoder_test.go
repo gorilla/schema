@@ -1124,3 +1124,27 @@ func TestDecodeToTypedField(t *testing.T) {
 		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
 	}
 }
+
+// issue 37
+func TestRegisterConverter(t *testing.T) {
+	type Aa int
+	type Bb int
+	s1 := &struct {
+		Aa
+		Bb
+	}{}
+	decoder := NewDecoder()
+
+	decoder.RegisterConverter(s1.Aa, func(s string) reflect.Value { return reflect.ValueOf(1) })
+	decoder.RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
+
+	v1 := map[string][]string{"Aa": {"4"}, "Bb": {"5"}}
+	decoder.Decode(s1, v1)
+
+	if s1.Aa != Aa(1) {
+		t.Errorf("s1.Aa: expected %v, got %v", 1, s1.Aa)
+	}
+	if s1.Bb != Bb(2) {
+		t.Errorf("s1.Bb: expected %v, got %v", 2, s1.Bb)
+	}
+}

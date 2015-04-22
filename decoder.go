@@ -155,6 +155,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 					ptr.Elem().Set(item)
 					item = ptr
 				}
+				if item.Type() != elemT && !isPtrElem {
+					item = item.Convert(elemT)
+				}
 				items = append(items, item)
 			} else {
 				if strings.Contains(value, ",") {
@@ -169,6 +172,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 								ptr := reflect.New(elemT)
 								ptr.Elem().Set(item)
 								item = ptr
+							}
+							if item.Type() != elemT && !isPtrElem {
+								item = item.Convert(elemT)
 							}
 							items = append(items, item)
 						} else {

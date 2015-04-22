@@ -9,22 +9,26 @@ import (
 	"testing"
 )
 
+type IntAlias int
+
 // All cases we want to cover, in a nutshell.
 type S1 struct {
-	F01 int     `schema:"f1"`
-	F02 *int    `schema:"f2"`
-	F03 []int   `schema:"f3"`
-	F04 []*int  `schema:"f4"`
-	F05 *[]int  `schema:"f5"`
-	F06 *[]*int `schema:"f6"`
-	F07 S2      `schema:"f7"`
-	F08 *S1     `schema:"f8"`
-	F09 int     `schema:"-"`
-	F10 []S1    `schema:"f10"`
-	F11 []*S1   `schema:"f11"`
-	F12 *[]S1   `schema:"f12"`
-	F13 *[]*S1  `schema:"f13"`
-	F14 int     `schema:"f14"`
+	F01 int        `schema:"f1"`
+	F02 *int       `schema:"f2"`
+	F03 []int      `schema:"f3"`
+	F04 []*int     `schema:"f4"`
+	F05 *[]int     `schema:"f5"`
+	F06 *[]*int    `schema:"f6"`
+	F07 S2         `schema:"f7"`
+	F08 *S1        `schema:"f8"`
+	F09 int        `schema:"-"`
+	F10 []S1       `schema:"f10"`
+	F11 []*S1      `schema:"f11"`
+	F12 *[]S1      `schema:"f12"`
+	F13 *[]*S1     `schema:"f13"`
+	F14 int        `schema:"f14"`
+	F15 IntAlias   `schema:"f15"`
+	F16 []IntAlias `schema:"f16"`
 }
 
 type S2 struct {
@@ -51,6 +55,8 @@ func TestAll(t *testing.T) {
 		"f13.0.f13.0.f6": {"131", "132"},
 		"f13.0.f13.1.f6": {"133", "134"},
 		"f14":            {},
+		"f15":            {"151"},
+		"f16":            {"161", "162"},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -61,6 +67,8 @@ func TestAll(t *testing.T) {
 	f111, f112, f113, f114 := 111, 112, 113, 114
 	f121, f122, f123, f124 := 121, 122, 123, 124
 	f131, f132, f133, f134 := 131, 132, 133, 134
+	var f151 IntAlias = 151
+	var f161, f162 IntAlias = 161, 162
 	e := S1{
 		F01: 1,
 		F02: &f2,
@@ -112,6 +120,8 @@ func TestAll(t *testing.T) {
 			},
 		},
 		F14: 0,
+		F15: f151,
+		F16: []IntAlias{f161, f162},
 	}
 
 	s := &S1{}
@@ -292,6 +302,16 @@ func TestAll(t *testing.T) {
 	}
 	if s.F14 != e.F14 {
 		t.Errorf("f14: expected %v, got %v", e.F14, s.F14)
+	}
+	if s.F15 != e.F15 {
+		t.Errorf("f15: expected %v, got %v", e.F15, s.F15)
+	}
+	if s.F16 == nil {
+		t.Errorf("f16: nil")
+	} else if len(s.F16) != len(e.F16) {
+		t.Error("f16: expected len %d, got %d", len(e.F16), len(s.F16))
+	} else if !reflect.DeepEqual(s.F16, e.F16) {
+		t.Error("f16: expected %v, got %v", e.F16, s.F16)
 	}
 }
 

@@ -6,6 +6,7 @@ package schema
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -1166,5 +1167,27 @@ func TestRegisterConverter(t *testing.T) {
 	}
 	if s1.Bb != Bb(2) {
 		t.Errorf("s1.Bb: expected %v, got %v", 2, s1.Bb)
+	}
+}
+
+// Issue #40
+func TestRegisterConverterSlice(t *testing.T) {
+	decoder := NewDecoder()
+	decoder.RegisterConverter([]string{}, func(input string) reflect.Value {
+		return reflect.ValueOf(strings.Split(input, ","))
+	})
+
+	result := struct {
+		Multiple []string `schema:"multiple"`
+	}{}
+
+	expected := []string{"one", "two", "three"}
+	decoder.Decode(&result, map[string][]string{
+		"multiple": []string{"one,two,three"},
+	})
+	for i := range expected {
+		if got, want := expected[i], result.Multiple[i]; got != want {
+			t.Errorf("%d: got %s, want %s", got, want)
+		}
 	}
 }

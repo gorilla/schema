@@ -90,8 +90,7 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 }
 
 // decode fills a struct field using a parsed path.
-func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
-	values []string) error {
+func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values []string) error {
 	// Get the field walking the struct fields by index.
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
@@ -132,18 +131,22 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		return d.decode(v.Index(idx), path, parts[1:], values)
 	}
 
-	// Simple case.
-	if t.Kind() == reflect.Slice {
+	// Get the converter early in case there is one for a slice type.
+	conv := d.cache.converter(t)
+	if conv == nil && t.Kind() == reflect.Slice {
 		var items []reflect.Value
 		elemT := t.Elem()
 		isPtrElem := elemT.Kind() == reflect.Ptr
 		if isPtrElem {
 			elemT = elemT.Elem()
 		}
+
+		// Try to get a converter for the element type.
 		conv := d.cache.converter(elemT)
 		if conv == nil {
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
+
 		for key, value := range values {
 			if value == "" {
 				if d.zeroEmpty {
@@ -199,7 +202,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
-		} else if conv := d.cache.converter(t); conv != nil {
+		} else if conv != nil {
 			if value := conv(val); value.IsValid() {
 				v.Set(value.Convert(t))
 			} else {

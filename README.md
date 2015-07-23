@@ -9,6 +9,10 @@ Package gorilla/schema fills a struct with form values.
 Here's a quick example: we parse POST form values and then decode them into a struct:
 
 ```go
+// Set a Decoder instance as a package global, because it caches 
+// meta-data about structs, and a instance can be shared safely.
+var decoder = schema.NewDecoder()
+
 type Person struct {
     Name  string
     Phone string
@@ -32,11 +36,7 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
     // Do something with person.Name or person.Phone
 }
 ```
-Note: it is a good idea to set a Decoder instance as a package global, because it caches meta-data about structs, and a instance can be shared safely:
 
-```go
-var decoder = schema.NewDecoder()
-```
 To define custom names for fields, use a struct tag "schema". To not populate certain fields, use a dash for the name and it will be ignored:
 
 ```go

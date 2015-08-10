@@ -65,9 +65,13 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 		path = append(path, field.name)
 		if field.ss {
 			// Parse a special case: slices of structs.
-			// i+1 must be the slice index, and i+2 must exist.
+			// i+1 must be the slice index.
+			//
+			// Now that struct can implements TextUnmarshaler interface,
+			// we don't need to force the struct's fields to appear in the path.
+			// So checking i+2 is not necessary anymore.
 			i++
-			if i+1 >= len(keys) {
+			if i+1 > len(keys) {
 				return nil, invalidPath
 			}
 			if index64, err = strconv.ParseInt(keys[i], 10, 0); err != nil {

@@ -5,6 +5,7 @@
 package schema
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"reflect"
@@ -144,6 +145,8 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		// Try to get a converter for the element type.
 		conv := d.cache.converter(elemT)
 		if conv == nil {
+			// As we are not dealing with slice of structs here, we don't need to check if the type
+			// implements TextUnmarshaler interface
 			return fmt.Errorf("schema: converter not found for %v", elemT)
 		}
 
@@ -181,11 +184,17 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 							}
 							items = append(items, item)
 						} else {
-							return ConversionError{path, key}
+							return ConversionError{
+								Key:   path,
+								Index: key,
+							}
 						}
 					}
 				} else {
-					return ConversionError{path, key}
+					return ConversionError{
+						Key:   path,
+						Index: key,
+					}
 				}
 			}
 		}
@@ -206,10 +215,31 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if value := conv(val); value.IsValid() {
 				v.Set(value.Convert(t))
 			} else {
-				return ConversionError{path, -1}
+				return ConversionError{
+					Key:   path,
+					Index: -1,
+				}
 			}
 		} else {
-			return fmt.Errorf("schema: converter not found for %v", t)
+			// When there's no registered conversion for the custom type, we will check if the type
+			// implements the TextUnmarshaler interface. As the UnmarshalText function should be applied
+			// to the pointer of the type, we convert the value to pointer.
+			if v.CanAddr() {
+				v = v.Addr()
+			}
+
+			if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+				if err := u.UnmarshalText([]byte(val)); err != nil {
+					return ConversionError{
+						Key:   path,
+						Index: -1,
+						Err:   err,
+					}
+				}
+
+			} else {
+				return fmt.Errorf("schema: converter not found for %v", t)
+			}
 		}
 	}
 	return nil
@@ -221,14 +251,24 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 type ConversionError struct {
 	Key   string // key from the source map.
 	Index int    // index for multi-value fields; -1 for single-value fields.
+	Err   error  // low-level error (when it exists)
 }
 
 func (e ConversionError) Error() string {
+	var output string
+
 	if e.Index < 0 {
-		return fmt.Sprintf("schema: error converting value for %q", e.Key)
+		output = fmt.Sprintf("schema: error converting value for %q", e.Key)
+	} else {
+		output = fmt.Sprintf("schema: error converting value for index %d of %q",
+			e.Index, e.Key)
 	}
-	return fmt.Sprintf("schema: error converting value for index %d of %q",
-		e.Index, e.Key)
+
+	if e.Err != nil {
+		output = fmt.Sprintf("%s. Details: %s", output, e.Err)
+	}
+
+	return output
 }
 
 // MultiError stores multiple decoding errors.

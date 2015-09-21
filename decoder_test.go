@@ -5,6 +5,7 @@
 package schema
 
 import (
+	"encoding/hex"
 	"errors"
 	"reflect"
 	"strings"
@@ -31,10 +32,27 @@ type S1 struct {
 	F14 int        `schema:"f14"`
 	F15 IntAlias   `schema:"f15"`
 	F16 []IntAlias `schema:"f16"`
+	F17 S19        `schema:"f17"`
 }
 
 type S2 struct {
 	F01 *[]*int `schema:"f1"`
+}
+
+type S19 [2]byte
+
+func (id *S19) UnmarshalText(text []byte) error {
+	buf, err := hex.DecodeString(string(text))
+	if err != nil {
+		return err
+	}
+	if len(buf) > len(*id) {
+		return errors.New("out of range")
+	}
+	for i := range buf {
+		(*id)[i] = buf[i]
+	}
+	return nil
 }
 
 func TestAll(t *testing.T) {
@@ -59,6 +77,7 @@ func TestAll(t *testing.T) {
 		"f14":            {},
 		"f15":            {"151"},
 		"f16":            {"161", "162"},
+		"f17":            {"1a2b"},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -124,6 +143,7 @@ func TestAll(t *testing.T) {
 		F14: 0,
 		F15: f151,
 		F16: []IntAlias{f161, f162},
+		F17: S19{0x1a, 0x2b},
 	}
 
 	s := &S1{}
@@ -311,9 +331,12 @@ func TestAll(t *testing.T) {
 	if s.F16 == nil {
 		t.Errorf("f16: nil")
 	} else if len(s.F16) != len(e.F16) {
-		t.Error("f16: expected len %d, got %d", len(e.F16), len(s.F16))
+		t.Errorf("f16: expected len %d, got %d", len(e.F16), len(s.F16))
 	} else if !reflect.DeepEqual(s.F16, e.F16) {
-		t.Error("f16: expected %v, got %v", e.F16, s.F16)
+		t.Errorf("f16: expected %v, got %v", e.F16, s.F16)
+	}
+	if s.F17 != e.F17 {
+		t.Errorf("f17: expected %v, got %v", e.F17, s.F17)
 	}
 }
 
@@ -1188,7 +1211,7 @@ func TestRegisterConverterSlice(t *testing.T) {
 	})
 	for i := range expected {
 		if got, want := expected[i], result.Multiple[i]; got != want {
-			t.Errorf("%d: got %s, want %s", got, want)
+			t.Errorf("%d: got %s, want %s", i, got, want)
 		}
 	}
 }

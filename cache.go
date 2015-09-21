@@ -166,6 +166,12 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 			ft = ft.Elem()
 		}
 	}
+	if ft.Kind() == reflect.Array {
+		ft = ft.Elem()
+		if ft.Kind() == reflect.Ptr {
+			ft = ft.Elem()
+		}
+	}
 	if isStruct = ft.Kind() == reflect.Struct; !isStruct {
 		if conv := c.conv[ft.Kind()]; conv == nil {
 			// Type is not supported.

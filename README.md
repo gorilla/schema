@@ -10,7 +10,7 @@ Here's a quick example: we parse POST form values and then decode them into a st
 
 ```go
 // Set a Decoder instance as a package global, because it caches 
-// meta-data about structs, and a instance can be shared safely.
+// meta-data about structs, and an instance can be shared safely.
 var decoder = schema.NewDecoder()
 
 type Person struct {
@@ -25,7 +25,9 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
         // Handle error
     }
 
+    person := &Person{}
     decoder := schema.NewDecoder()
+
     // r.PostForm is a map of our POST form values
     err := decoder.Decode(person, r.PostForm)
 
@@ -58,7 +60,7 @@ The supported field types in the destination struct are:
 * a pointer to one of the above types
 * a slice or a pointer to a slice of one of the above types
 
-Non-supported types are simply ignored, however custom types can be registered to be converted.
+Unsupported types are simply ignored, however custom types can be registered to be converted.
 
 More examples are available on the Gorilla website: http://www.gorillatoolkit.org/pkg/schema
 

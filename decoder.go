@@ -186,6 +186,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 						} else {
 							return ConversionError{
 								Key:   path,
+								Type:  elemT,
 								Index: key,
 							}
 						}
@@ -193,6 +194,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				} else {
 					return ConversionError{
 						Key:   path,
+						Type:  elemT,
 						Index: key,
 					}
 				}
@@ -217,6 +219,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			} else {
 				return ConversionError{
 					Key:   path,
+					Type:  t,
 					Index: -1,
 				}
 			}
@@ -232,6 +235,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				if err := u.UnmarshalText([]byte(val)); err != nil {
 					return ConversionError{
 						Key:   path,
+						Type:  t,
 						Index: -1,
 						Err:   err,
 					}
@@ -249,9 +253,10 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 // ConversionError stores information about a failed conversion.
 type ConversionError struct {
-	Key   string // key from the source map.
-	Index int    // index for multi-value fields; -1 for single-value fields.
-	Err   error  // low-level error (when it exists)
+	Key   string       // key from the source map.
+	Type  reflect.Type // expected type of elem
+	Index int          // index for multi-value fields; -1 for single-value fields.
+	Err   error        // low-level error (when it exists)
 }
 
 func (e ConversionError) Error() string {

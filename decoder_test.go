@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type IntAlias int
@@ -1352,5 +1353,39 @@ func TestNoTextUnmarshalerType(t *testing.T) {
 
 	if err := decoder.Decode(&s, data); err == nil {
 		t.Error("Not detecting when there's no converter")
+	}
+}
+
+func TestExpectedType(t *testing.T) {
+	data := map[string][]string{
+		"bools":   []string{"1", "a"},
+		"date":    []string{"invalid"},
+		"Foo.Bar": []string{"a", "b"},
+	}
+
+	type B struct {
+		Bar *int
+	}
+	type A struct {
+		Bools []bool    `schema:"bools"`
+		Date  time.Time `schema:"date"`
+		Foo   B
+	}
+
+	a := A{}
+
+	err := NewDecoder().Decode(&a, data)
+
+	e := err.(MultiError)["bools"].(ConversionError)
+	if e.Type != reflect.TypeOf(false) && e.Index == 1 {
+		t.Errorf("Expected bool, index: 1 got %+v, index: %d", e.Type, e.Index)
+	}
+	e = err.(MultiError)["date"].(ConversionError)
+	if e.Type != reflect.TypeOf(time.Time{}) {
+		t.Errorf("Expected time.Time got %+v", e.Type)
+	}
+	e = err.(MultiError)["Foo.Bar"].(ConversionError)
+	if e.Type != reflect.TypeOf(0) {
+		t.Errorf("Expected int got %+v", e.Type)
 	}
 }

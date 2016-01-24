@@ -19,10 +19,11 @@ func NewDecoder() *Decoder {
 
 // Decoder decodes values from a map[string][]string to a struct.
 type Decoder struct {
-	cache             *cache
-	zeroEmpty         bool
-	ignoreUnknownKeys bool
+	cache                 *cache
+	zeroEmpty             bool
+	ignoreUnknownKeys     bool
 }
+
 
 // SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
@@ -52,6 +53,15 @@ func (d *Decoder) ZeroEmpty(z bool) {
 // To preserve backwards compatibility, the default value is false.
 func (d *Decoder) IgnoreUnknownKeys(i bool) {
 	d.ignoreUnknownKeys = i
+}
+
+// UnderscoreToCamelCase allows automatically map form values named
+// in "underscore" style to struct fields with "CamelCase" naming
+// convention.
+//
+// The default value is false.
+func (d *Decoder) UnderscoreToCamelCase(u bool) {
+	d.cache.underscoreToCamelCase = u
 }
 
 // RegisterConverter registers a converter function for a custom type.

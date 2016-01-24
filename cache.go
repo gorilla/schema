@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 var invalidPath = errors.New("schema: invalid path")
@@ -35,6 +36,7 @@ type cache struct {
 	conv    map[reflect.Kind]Converter
 	regconv map[reflect.Type]Converter
 	tag     string
+	underscoreToCamelCase bool
 }
 
 // parsePath parses a path in dotted notation verifying that it is a valid
@@ -148,7 +150,7 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 
 // createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, info *structInfo) {
-	alias := fieldAlias(field, c.tag)
+	alias := fieldAlias(field, c.tag, c.underscoreToCamelCase)
 	if alias == "-" {
 		// Ignore this field.
 		return
@@ -227,7 +229,7 @@ type pathPart struct {
 // ----------------------------------------------------------------------------
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField, tagName string) string {
+func fieldAlias(field reflect.StructField, tagName string, useCamelCase bool) string {
 	var alias string
 	if tag := field.Tag.Get(tagName); tag != "" {
 		// For now tags only support the name but let's follow the
@@ -239,7 +241,36 @@ func fieldAlias(field reflect.StructField, tagName string) string {
 		}
 	}
 	if alias == "" {
-		alias = field.Name
+		if useCamelCase {
+			alias = camelCaseToUnderscore(field.Name)
+		} else {
+			alias = field.Name
+		}
 	}
 	return alias
+}
+
+func camelCaseToUnderscore(str string) string {
+	var output []rune
+	var segment []rune
+	for _, r := range str {
+		if !unicode.IsLower(r) {
+			output = addSegment(output, segment)
+			segment = nil
+		}
+		segment = append(segment, unicode.ToLower(r))
+	}
+	output = addSegment(output, segment)
+	return string(output)
+}
+
+func addSegment(inrune, segment []rune) []rune {
+	if len(segment) == 0 {
+		return inrune
+	}
+	if len(inrune) != 0 {
+		inrune = append(inrune, '_')
+	}
+	inrune = append(inrune, segment...)
+	return inrune
 }

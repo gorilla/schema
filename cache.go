@@ -30,11 +30,12 @@ func newCache() *cache {
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l       sync.RWMutex
-	m       map[reflect.Type]*structInfo
-	conv    map[reflect.Kind]Converter
-	regconv map[reflect.Type]Converter
-	tag     string
+	l             sync.RWMutex
+	m             map[reflect.Type]*structInfo
+	conv          map[reflect.Kind]Converter
+	regconv       map[reflect.Type]Converter
+	tag           string
+	nameConverter NameConverter
 }
 
 // parsePath parses a path in dotted notation verifying that it is a valid
@@ -148,11 +149,12 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 
 // createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, info *structInfo) {
-	alias := fieldAlias(field, c.tag)
+	alias := c.fieldAlias(field, c.tag)
 	if alias == "-" {
 		// Ignore this field.
 		return
 	}
+
 	// Check if the type is supported and don't cache it if not.
 	// First let's get the basic type.
 	isSlice, isStruct := false, false
@@ -227,7 +229,7 @@ type pathPart struct {
 // ----------------------------------------------------------------------------
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField, tagName string) string {
+func (c *cache) fieldAlias(field reflect.StructField, tagName string) string {
 	var alias string
 	if tag := field.Tag.Get(tagName); tag != "" {
 		// For now tags only support the name but let's follow the
@@ -239,7 +241,11 @@ func fieldAlias(field reflect.StructField, tagName string) string {
 		}
 	}
 	if alias == "" {
-		alias = field.Name
+		if c.nameConverter != nil {
+			alias = c.nameConverter(field.Name)
+		} else {
+			alias = field.Name
+		}
 	}
 	return alias
 }

@@ -59,6 +59,11 @@ func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) 
 	d.cache.regconv[reflect.TypeOf(value)] = converterFunc
 }
 
+// RegisterNameConverter registers custom converter from struct field names to form fields.
+func (d *Decoder) RegisterNameConverter(converterFunc NameConverter) {
+	d.cache.nameConverter = converterFunc
+}
+
 // Decode decodes a map[string][]string to a struct.
 //
 // The first parameter must be a pointer to a struct.

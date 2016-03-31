@@ -257,6 +257,17 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
+		} else if u, ok := isTextUnmarshaler(v); ok {
+			// If the value implements the encoding.TextUnmarshaler interface
+			// apply UnmarshalText as the converter
+			if err := u.UnmarshalText([]byte(val)); err != nil {
+				return ConversionError{
+					Key:   path,
+					Type:  t,
+					Index: -1,
+					Err:   err,
+				}
+			}
 		} else if conv != nil {
 			if value := conv(val); value.IsValid() {
 				v.Set(value.Convert(t))
@@ -268,29 +279,20 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				}
 			}
 		} else {
-			// When there's no registered conversion for the custom type, we will check if the type
-			// implements the TextUnmarshaler interface. As the UnmarshalText function should be applied
-			// to the pointer of the type, we convert the value to pointer.
-			if v.CanAddr() {
-				v = v.Addr()
-			}
-
-			if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
-				if err := u.UnmarshalText([]byte(val)); err != nil {
-					return ConversionError{
-						Key:   path,
-						Type:  t,
-						Index: -1,
-						Err:   err,
-					}
-				}
-
-			} else {
-				return fmt.Errorf("schema: converter not found for %v", t)
-			}
+			return fmt.Errorf("schema: converter not found for %v", t)
 		}
 	}
 	return nil
+}
+
+func isTextUnmarshaler(v reflect.Value) (encoding.TextUnmarshaler, bool) {
+	// As the UnmarshalText function should be applied
+	// to the pointer of the type, we convert the value to pointer.
+	if v.CanAddr() {
+		v = v.Addr()
+	}
+	u, ok := v.Interface().(encoding.TextUnmarshaler)
+	return u, ok
 }
 
 // Errors ---------------------------------------------------------------------

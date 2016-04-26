@@ -26,8 +26,9 @@ type Decoder struct {
 
 // SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
-func (d *Decoder) SetAliasTag(tag string) {
+func (d *Decoder) SetAliasTag(tag string) *Decoder {
 	d.cache.tag = tag
+	return d
 }
 
 // ZeroEmpty controls the behaviour when the decoder encounters empty values
@@ -38,8 +39,9 @@ func (d *Decoder) SetAliasTag(tag string) {
 //
 // The default value is false, that is empty values do not change
 // the value of the struct field.
-func (d *Decoder) ZeroEmpty(z bool) {
+func (d *Decoder) ZeroEmpty(z bool) *Decoder {
 	d.zeroEmpty = z
+	return d
 }
 
 // IgnoreUnknownKeys controls the behaviour when the decoder encounters unknown
@@ -50,13 +52,15 @@ func (d *Decoder) ZeroEmpty(z bool) {
 // will still be decoded in to the target struct.
 //
 // To preserve backwards compatibility, the default value is false.
-func (d *Decoder) IgnoreUnknownKeys(i bool) {
+func (d *Decoder) IgnoreUnknownKeys(i bool) *Decoder {
 	d.ignoreUnknownKeys = i
+	return d
 }
 
 // RegisterConverter registers a converter function for a custom type.
-func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) {
+func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) *Decoder {
 	d.cache.regconv[reflect.TypeOf(value)] = converterFunc
+	return d
 }
 
 // Decode decodes a map[string][]string to a struct.

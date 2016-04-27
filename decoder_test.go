@@ -634,8 +634,7 @@ func TestEmptyValueZeroEmpty(t *testing.T) {
 		"F01": {"", "foo"},
 	}
 	s := S5{}
-	d := NewDecoder()
-	d.ZeroEmpty(true)
+	d := NewDecoder().ZeroEmpty(true)
 	err := d.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
@@ -690,8 +689,7 @@ func TestSetAliasTag(t *testing.T) {
 	}
 
 	s := S8{}
-	dec := NewDecoder()
-	dec.SetAliasTag("json")
+	dec := NewDecoder().SetAliasTag("json")
 	dec.Decode(&s, data)
 	if s.ID != "foo" {
 		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
@@ -704,8 +702,7 @@ func TestZeroEmpty(t *testing.T) {
 		"F03": {"true"},
 	}
 	s := S4{1, 1, false}
-	d := NewDecoder()
-	d.ZeroEmpty(true)
+	d := NewDecoder().ZeroEmpty(true)
 
 	err := d.Decode(&s, data)
 	if err != nil {
@@ -728,8 +725,7 @@ func TestNoZeroEmpty(t *testing.T) {
 		"F03": {"true"},
 	}
 	s := S4{1, 1, false}
-	d := NewDecoder()
-	d.ZeroEmpty(false)
+	d := NewDecoder().ZeroEmpty(false)
 	err := d.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
@@ -798,8 +794,7 @@ func TestInvalidPathIgnoreUnknownKeys(t *testing.T) {
 		"Foo.Bar": {"baz"},
 	}
 	s := S9{}
-	dec := NewDecoder()
-	dec.IgnoreUnknownKeys(true)
+	dec := NewDecoder().IgnoreUnknownKeys(true)
 	err := dec.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)

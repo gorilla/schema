@@ -92,6 +92,7 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 
 // decode fills a struct field using a parsed path.
 func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values []string) error {
+
 	// Get the field walking the struct fields by index.
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
@@ -102,7 +103,6 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		}
 		v = v.FieldByName(name)
 	}
-
 	// Don't even bother for unexported fields.
 	if !v.CanSet() {
 		return nil
@@ -137,6 +137,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	if conv == nil && t.Kind() == reflect.Slice {
 		var items []reflect.Value
 		elemT := t.Elem()
+		//elemP := elemT
 		isPtrElem := elemT.Kind() == reflect.Ptr
 		if isPtrElem {
 			elemT = elemT.Elem()
@@ -154,6 +155,21 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if value == "" {
 				if d.zeroEmpty {
 					items = append(items, reflect.Zero(elemT))
+				}
+			} else if _, ok := isTextUnmarshaler(v); ok {
+				u := reflect.New(elemT)
+				if err := u.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value)); err != nil {
+					return ConversionError{
+						Key:   path,
+						Type:  t,
+						Index: key,
+						Err:   err,
+					}
+				}
+				if u.Kind() == reflect.Ptr {
+					items = append(items, u.Elem())
+				} else {
+					items = append(items, u)
 				}
 			} else if item := conv(value); item.IsValid() {
 				if isPtrElem {
@@ -247,6 +263,20 @@ func isTextUnmarshaler(v reflect.Value) (encoding.TextUnmarshaler, bool) {
 	if v.CanAddr() {
 		v = v.Addr()
 	}
+	if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+		return u, ok
+	}
+
+	// if v is []T or *[]T create new T
+	t := v.Type()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+
+	v = reflect.New(t)
 	u, ok := v.Interface().(encoding.TextUnmarshaler)
 	return u, ok
 }

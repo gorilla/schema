@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 )
 
 type IntAlias int
@@ -1387,5 +1388,52 @@ func TestExpectedType(t *testing.T) {
 	e = err.(MultiError)["Foo.Bar"].(ConversionError)
 	if e.Type != reflect.TypeOf(0) {
 		t.Errorf("Expected int got %+v", e.Type)
+	}
+}
+
+// ------------------- Test custom name converter ---------------------------
+
+type S20 struct {
+	FirstField         string
+	SecondField        string `schema:"customName"`
+	VeryLongThirdField string
+}
+
+func TestCustomNameConverter(t *testing.T) {
+	data := map[string][]string{
+		"first_field":           []string{"first"},
+		"second_field":          []string{"second"},
+		"customName":            []string{"custom"},
+		"very_long_third_field": []string{"third"},
+	}
+	d := NewDecoder()
+	// CamelCase to underscore converter
+	d.RegisterNameConverter(func(fieldName string) string {
+		var output []rune
+		for _, r := range fieldName {
+			if !unicode.IsLower(r) {
+				if len(output) > 0 {
+					output = append(output, '_')
+				}
+				output = append(output, unicode.ToLower(r))
+			} else {
+				output = append(output, r)
+			}
+		}
+		return string(output)
+	})
+	out := &S20{}
+	d.Decode(out, data)
+	// check simple convertation
+	if out.FirstField != "first" {
+		t.Errorf("Expected 'first' got '%s'", out.FirstField)
+	}
+	// check alias from tag
+	if out.SecondField != "custom" {
+		t.Errorf("Expected 'custom' got '%s'", out.SecondField)
+	}
+	// check long name
+	if out.VeryLongThirdField != "third" {
+		t.Errorf("Expected 'third' got '%s'", out.VeryLongThirdField)
 	}
 }

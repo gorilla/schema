@@ -1389,3 +1389,49 @@ func TestExpectedType(t *testing.T) {
 		t.Errorf("Expected int got %+v", e.Type)
 	}
 }
+
+type R1 struct {
+	A string `schema:"a,required"`
+	B struct {
+		C int     `schema:"c,required"`
+		D float64 `schema:"d"`
+		E string  `schema:"e,required"`
+	} `schema:"b"`
+	F []string `schema:"f,required"`
+	G []int    `schema:"g,othertag"`
+}
+
+func TestRequiredField(t *testing.T) {
+	var a R1
+	v := map[string][]string{
+		"a":   []string{"bbb"},
+		"b.c": []string{"88"},
+		"b.d": []string{"9"},
+		"f":   []string{""},
+	}
+	err := NewDecoder().Decode(&a, v)
+	if err == nil {
+		t.Errorf("error nil, b.e is empty expect")
+		return
+	}
+	v["b.e"] = []string{""} // empty string
+	err = NewDecoder().Decode(&a, v)
+	if err == nil {
+		t.Errorf("error nil, b.e is empty expect")
+		return
+	}
+
+	v["b.e"] = []string{"nonempty"} // empty string
+	err = NewDecoder().Decode(&a, v)
+	if err != nil {
+		t.Errorf("error: %v", err)
+		return
+	}
+
+	v["f"] = []string{}
+	err = NewDecoder().Decode(&a, v)
+	if err == nil {
+		t.Errorf("error nil, f is empty expect")
+		return
+	}
+}

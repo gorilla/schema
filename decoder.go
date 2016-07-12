@@ -128,7 +128,7 @@ func isEmpty(t reflect.Type, value []string) bool {
 		return true
 	}
 	switch t.Kind() {
-	case reflect.String:
+	case boolType, float32Type, float64Type, intType, int8Type, int32Type, int64Type, stringType, uint8Type, uint16Type, uint32Type, uint64Type:
 		return len(value[0]) == 0
 	}
 	return false

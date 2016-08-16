@@ -148,7 +148,7 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 
 // createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, info *structInfo) {
-	alias := fieldAlias(field, c.tag)
+	alias, options := fieldAlias(field, c.tag)
 	if alias == "-" {
 		// Ignore this field.
 		return
@@ -180,10 +180,11 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 	}
 
 	info.fields = append(info.fields, &fieldInfo{
-		typ:   field.Type,
-		name:  field.Name,
-		ss:    isSlice && isStruct,
-		alias: alias,
+		typ:      field.Type,
+		name:     field.Name,
+		ss:       isSlice && isStruct,
+		alias:    alias,
+		required: options.Contains("required"),
 	})
 }
 
@@ -212,10 +213,11 @@ func (i *structInfo) get(alias string) *fieldInfo {
 }
 
 type fieldInfo struct {
-	typ   reflect.Type
-	name  string // field name in the struct.
-	ss    bool   // true if this is a slice of structs.
-	alias string
+	typ      reflect.Type
+	name     string // field name in the struct.
+	ss       bool   // true if this is a slice of structs.
+	alias    string
+	required bool // tag option
 }
 
 type pathPart struct {
@@ -227,19 +229,33 @@ type pathPart struct {
 // ----------------------------------------------------------------------------
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField, tagName string) string {
-	var alias string
+func fieldAlias(field reflect.StructField, tagName string) (alias string, options tagOptions) {
 	if tag := field.Tag.Get(tagName); tag != "" {
-		// For now tags only support the name but let's follow the
-		// comma convention from encoding/json and others.
-		if idx := strings.Index(tag, ","); idx == -1 {
-			alias = tag
-		} else {
-			alias = tag[:idx]
-		}
+		alias, options = parseTag(tag)
 	}
 	if alias == "" {
 		alias = field.Name
 	}
-	return alias
+	return alias, options
+}
+
+// tagOptions is the string following a comma in a struct field's tag, or
+// the empty string. It does not include the leading comma.
+type tagOptions []string
+
+// parseTag splits a struct field's url tag into its name and comma-separated
+// options.
+func parseTag(tag string) (string, tagOptions) {
+	s := strings.Split(tag, ",")
+	return s[0], s[1:]
+}
+
+// Contains checks whether the tagOptions contains the specified option.
+func (o tagOptions) Contains(option string) bool {
+	for _, s := range o {
+		if s == option {
+			return true
+		}
+	}
+	return false
 }

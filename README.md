@@ -20,17 +20,14 @@ type Person struct {
 
 func MyHandler(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
-
     if err != nil {
         // Handle error
     }
 
-    person := &Person{}
-    decoder := schema.NewDecoder()
-
+    var person Person
+    
     // r.PostForm is a map of our POST form values
-    err := decoder.Decode(person, r.PostForm)
-
+    err := decoder.Decode(&person, r.PostForm)
     if err != nil {
         // Handle error
     }

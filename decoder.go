@@ -188,59 +188,48 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 		// Try to get a converter for the element type.
 		conv := d.cache.converter(elemT)
-		if conv == nil {
-			// As we are not dealing with slice of structs here, we don't need to check if the type
-			// implements TextUnmarshaler interface
-			return fmt.Errorf("schema: converter not found for %v", elemT)
-		}
 
 		for key, value := range values {
-			if value == "" {
-				if d.zeroEmpty {
-					items = append(items, reflect.Zero(elemT))
+
+			added, err := d.convertSliceValue(value, v, &items, elemT, conv, isPtrElem)
+			if err != nil {
+				if err, ok := err.(ConversionError); ok {
+					err.Key = path
+					err.Index = key
+					return err
 				}
-			} else if item := conv(value); item.IsValid() {
-				if isPtrElem {
-					ptr := reflect.New(elemT)
-					ptr.Elem().Set(item)
-					item = ptr
-				}
-				if item.Type() != elemT && !isPtrElem {
-					item = item.Convert(elemT)
-				}
-				items = append(items, item)
-			} else {
-				if strings.Contains(value, ",") {
-					values := strings.Split(value, ",")
-					for _, value := range values {
-						if value == "" {
-							if d.zeroEmpty {
-								items = append(items, reflect.Zero(elemT))
-							}
-						} else if item := conv(value); item.IsValid() {
-							if isPtrElem {
-								ptr := reflect.New(elemT)
-								ptr.Elem().Set(item)
-								item = ptr
-							}
-							if item.Type() != elemT && !isPtrElem {
-								item = item.Convert(elemT)
-							}
-							items = append(items, item)
-						} else {
-							return ConversionError{
-								Key:   path,
-								Type:  elemT,
-								Index: key,
-							}
+				return err
+			}
+
+			if added {
+				continue
+			}
+
+			if strings.Contains(value, ",") {
+				values := strings.Split(value, ",")
+				for _, value := range values {
+					added, err := d.convertSliceValue(value, v, &items, elemT, conv, isPtrElem)
+					if err != nil {
+						if err, ok := err.(ConversionError); ok {
+							err.Key = path
+							err.Index = key
+							return err
+						}
+						return err
+					}
+					if !added {
+						return ConversionError{
+							Key:   path,
+							Type:  elemT,
+							Index: key,
 						}
 					}
-				} else {
-					return ConversionError{
-						Key:   path,
-						Type:  elemT,
-						Index: key,
-					}
+				}
+			} else {
+				return ConversionError{
+					Key:   path,
+					Type:  elemT,
+					Index: key,
 				}
 			}
 		}
@@ -253,36 +242,90 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			val = values[len(values)-1]
 		}
 
-		if val == "" {
-			if d.zeroEmpty {
-				v.Set(reflect.Zero(t))
+		if err := d.convertSingleValue(val, v, t, conv); err != nil {
+			if err, ok := err.(ConversionError); ok {
+				err.Key = path
+				return err
 			}
-		} else if u, ok := isTextUnmarshaler(v); ok {
-			// If the value implements the encoding.TextUnmarshaler interface
-			// apply UnmarshalText as the converter
-			if err := u.UnmarshalText([]byte(val)); err != nil {
-				return ConversionError{
-					Key:   path,
-					Type:  t,
-					Index: -1,
-					Err:   err,
-				}
-			}
-		} else if conv != nil {
-			if value := conv(val); value.IsValid() {
-				v.Set(value.Convert(t))
-			} else {
-				return ConversionError{
-					Key:   path,
-					Type:  t,
-					Index: -1,
-				}
-			}
-		} else {
-			return fmt.Errorf("schema: converter not found for %v", t)
+			return err
 		}
+
 	}
 	return nil
+}
+
+func (d *Decoder) convertSingleValue(val string, v reflect.Value, t reflect.Type, conv Converter) error {
+	if u, ok := isTextUnmarshaler(v); ok {
+		// If the value implements the encoding.TextUnmarshaler interface
+		// apply UnmarshalText as the converter
+		if err := u.UnmarshalText([]byte(val)); err != nil {
+			return ConversionError{
+				Type:  t,
+				Index: -1,
+				Err:   err,
+			}
+		}
+		return nil
+	}
+
+	if val == "" {
+		if d.zeroEmpty {
+			v.Set(reflect.Zero(t))
+		}
+		return nil
+	}
+
+	if conv != nil {
+		if value := conv(val); value.IsValid() {
+			v.Set(value.Convert(t))
+			return nil
+		} else {
+			return ConversionError{
+				Type:  t,
+				Index: -1,
+			}
+		}
+	}
+
+	return fmt.Errorf("schema: converter not found for %v", t)
+}
+
+func (d *Decoder) convertSliceValue(value string, v reflect.Value, items *[]reflect.Value, elemT reflect.Type, conv Converter, isPtrElem bool) (added bool, err error) {
+	item := reflect.New(elemT)
+	if u, ok := isTextUnmarshaler(item); ok {
+		if err := u.UnmarshalText([]byte(value)); err != nil {
+			return false, ConversionError{
+				Type: elemT,
+				Err:  err,
+			}
+		}
+		*items = append(*items, reflect.ValueOf(u))
+		return true, nil
+	}
+
+	if value == "" {
+		if d.zeroEmpty {
+			*items = append(*items, reflect.Zero(elemT))
+		}
+		return true, nil
+	}
+
+	if conv != nil {
+		if item := conv(value); item.IsValid() {
+			if isPtrElem {
+				ptr := reflect.New(elemT)
+				ptr.Elem().Set(item)
+				item = ptr
+			}
+			if item.Type() != elemT && !isPtrElem {
+				item = item.Convert(elemT)
+			}
+			*items = append(*items, item)
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func isTextUnmarshaler(v reflect.Value) (encoding.TextUnmarshaler, bool) {

@@ -1458,3 +1458,273 @@ func TestRequiredField(t *testing.T) {
 		return
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+type errorUnmarshaler string
+
+func (*errorUnmarshaler) UnmarshalText(b []byte) error {
+	return errors.New("unmarshal error")
+}
+
+type unmarshaler string
+
+func (u *unmarshaler) UnmarshalText(b []byte) error {
+	*u = unmarshaler(strings.ToUpper(string(b)))
+	return nil
+}
+
+func TestDecoderSliceUnmarshalText(t *testing.T) {
+	type A struct {
+		Foo []*unmarshaler
+		Bar []*unmarshaler
+	}
+
+	data := map[string][]string{
+		"Foo": {"bar"},
+		"Bar": {"bar,baz"},
+	}
+
+	var a A
+
+	err := NewDecoder().Decode(&a, data)
+	if err != nil {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+	}
+
+	bar := unmarshaler("BAR")
+	if !reflect.DeepEqual(a.Foo, []*unmarshaler{&bar}) {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+	}
+
+	barbaz := unmarshaler("BAR,BAZ")
+	if !reflect.DeepEqual(a.Bar, []*unmarshaler{&barbaz}) {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+	}
+}
+
+func TestDecoderSliceUnmarshalTextError(t *testing.T) {
+	type A struct {
+		Foo []*errorUnmarshaler
+		Bar []*errorUnmarshaler
+	}
+
+	data := map[string][]string{
+		"Foo": {"bar"},
+		"Bar": {"bar,baz"},
+	}
+
+	err := NewDecoder().Decode(&A{}, data)
+	if err == nil {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+	}
+
+	if err, ok := err.(MultiError)["Foo"].(ConversionError); !ok {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method")
+		}
+	}
+
+	if err, ok := err.(MultiError)["Bar"].(ConversionError); !ok {
+		t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method for CSV values")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("slices of encoding.TextUnmarshaler's should use the UnmarshalText method for CSV values")
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+func TestDecoderPrecedence(t *testing.T) {
+	// 1. encoding.TextUnmarshaler
+
+	type A struct {
+		Foo errorUnmarshaler
+		Bar errorUnmarshaler
+	}
+
+	data := map[string][]string{
+		"Foo": {"bar"},
+		"Bar": {""},
+	}
+	err := NewDecoder().Decode(&A{}, data)
+	if err == nil {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	}
+
+	if err, ok := err.(MultiError)["Foo"].(ConversionError); !ok {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+		}
+	}
+
+	if err, ok := err.(MultiError)["Bar"].(ConversionError); !ok {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+		}
+	}
+
+	// 2. zeroEmpty
+	type C string
+
+	type B struct {
+		Foo C
+	}
+
+	d := NewDecoder()
+	d.ZeroEmpty(true)
+	d.RegisterConverter(C(""), func(s string) (v reflect.Value) {
+		panic("this shouldn't happen")
+	})
+
+	var b B
+	data = map[string][]string{
+		"Foo": {""},
+	}
+	err = d.Decode(&b, data)
+
+	if err != nil {
+		t.Fatal("ZeroEmpty should take precedence")
+	}
+
+	// this doesn't panic although it probably should...
+	d.ZeroEmpty(false)
+	_ = d.Decode(&b, data)
+
+	// 3. registered converter
+	d.RegisterConverter(C(""), func(s string) reflect.Value {
+		return reflect.ValueOf("foo")
+	})
+
+	data = map[string][]string{
+		"Foo": {"bar"},
+	}
+
+	err = d.Decode(&b, data)
+
+	if err != nil || b.Foo != "foo" {
+		t.Fatal("registered converters should take precedence")
+	}
+
+	// 4. default reflect.Kind converters
+	d.RegisterConverter(C(""), nil)
+	err = d.Decode(&b, data)
+
+	if err != nil || b.Foo != "bar" {
+		t.Fatal("default converter should be used")
+	}
+}
+
+func TestDecoderPrecedenceSlices(t *testing.T) {
+	// 1. encoding.TextUnmarshaler
+
+	type A struct {
+		Foo []*errorUnmarshaler
+		Bar []*errorUnmarshaler
+		Baz []*errorUnmarshaler
+	}
+
+	data := map[string][]string{
+		"Foo": {"bar"},
+		"Bar": {""},
+		"Baz": {"foo,bar"},
+	}
+	err := NewDecoder().Decode(&A{}, data)
+	if err == nil {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	}
+
+	if err, ok := err.(MultiError)["Foo"].(ConversionError); !ok {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+		}
+	}
+
+	if err, ok := err.(MultiError)["Bar"].(ConversionError); !ok {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+		}
+	}
+
+	if err, ok := err.(MultiError)["Baz"].(ConversionError); !ok {
+		t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+	} else {
+		if err.Err.Error() != "unmarshal error" {
+			t.Fatal("encoding.TextUnmarshaler should take highest precedence")
+		}
+	}
+
+	// 2. zeroEmpty
+	type C string
+
+	type B struct {
+		Foo []C
+		Bar []C
+	}
+
+	d := NewDecoder()
+	d.ZeroEmpty(true)
+	d.RegisterConverter(C(""), func(s string) (v reflect.Value) {
+		panic("this shouldn't happen")
+	})
+
+	var b B
+	data = map[string][]string{
+		"Foo": {"", ""},
+	}
+	err = d.Decode(&b, data)
+
+	if err != nil {
+		t.Fatal("ZeroEmpty should take precedence")
+	}
+	if !reflect.DeepEqual(b.Foo, make([]C, 2)) {
+		t.Fatal("ZeroEmpty should take precedence")
+	}
+
+	// this doesn't panic although it probably should...
+	d.ZeroEmpty(false)
+	_ = d.Decode(&b, data)
+
+	// 3. registered converter
+	d.RegisterConverter(C(""), func(s string) reflect.Value {
+		return reflect.ValueOf("foo")
+	})
+
+	data = map[string][]string{
+		"Foo": {"bar", "baz"},
+		"Bar": {"baz,quux"},
+	}
+
+	err = d.Decode(&b, data)
+
+	if err != nil || !reflect.DeepEqual(b.Foo, []C{"foo", "foo"}) {
+		t.Fatal("registered converters should take precedence")
+	}
+	// may be CSV parsing should be done earlier...
+	if err != nil || !reflect.DeepEqual(b.Bar, []C{"foo"}) {
+		t.Fatal("registered converters should take precedence")
+	}
+
+	// 4. default reflect.Kind converters
+	d.RegisterConverter(C(""), nil)
+	err = d.Decode(&b, data)
+
+	if err != nil || !reflect.DeepEqual(b.Foo, []C{"bar", "baz"}) {
+		t.Fatal("default converter should be used")
+	}
+	// may be CSV parsing should be done earlier...
+	if err != nil || !reflect.DeepEqual(b.Bar, []C{"baz,quux"}) {
+		t.Fatal("default converter should be used")
+	}
+}

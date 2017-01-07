@@ -138,31 +138,111 @@ func TestStruct(t *testing.T) {
 	}
 }
 
+func TestSlices(t *testing.T) {
+	type oneAsWord int
+	ones := []oneAsWord{1, 2}
+	s1 := &struct {
+		ones     []oneAsWord `schema:"ones"`
+		ints     []int       `schema:"ints"`
+		nonempty []int       `schema:"nonempty"`
+		empty    []int       `schema:"empty,omitempty"`
+	}{ones, []int{1, 1}, []int{}, []int{}}
+	vals := make(map[string][]string)
+
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(ones[0], func(v reflect.Value) string { return "one" })
+	encoder.Encode(s1, vals)
+
+	valsExist(t, "ones", []string{"one", "one"}, vals)
+	valsExist(t, "ints", []string{"1", "1"}, vals)
+	valsExist(t, "nonempty", []string{}, vals)
+	valNotExists(t, "empty", vals)
+}
+
+func TestCompatSlices(t *testing.T) {
+	type oneAsWord int
+	type s1 struct {
+		Ones []oneAsWord `schema:"ones"`
+		Ints []int       `schema:"ints"`
+	}
+	ones := []oneAsWord{1, 1}
+	src := &s1{ones, []int{1, 1}}
+	vals := make(map[string][]string)
+	dst := &s1{}
+
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(ones[0], func(v reflect.Value) string { return "one" })
+
+	decoder := NewDecoder()
+	decoder.RegisterConverter(ones[0], func(s string) reflect.Value {
+		if s == "one" {
+			return reflect.ValueOf(1)
+		}
+		return reflect.ValueOf(2)
+	})
+
+	encoder.Encode(src, vals)
+	decoder.Decode(dst, vals)
+
+	if len(src.Ints) != len(dst.Ints) || len(src.Ones) != len(src.Ones) {
+		t.Fatalf("Expected %v, got %v", src, dst)
+	}
+
+	for i, v := range src.Ones {
+		if dst.Ones[i] != v {
+			t.Fatalf("Expected %v, got %v", v, dst.Ones[i])
+		}
+	}
+
+	for i, v := range src.Ints {
+		if dst.Ints[i] != v {
+			t.Fatalf("Expected %v, got %v", v, dst.Ints[i])
+		}
+	}
+}
+
 func TestRegisterEncoder(t *testing.T) {
 	type oneAsWord int
 	type twoAsWord int
+	type oneSliceAsWord []int
 
 	s1 := &struct {
 		oneAsWord
 		twoAsWord
-	}{1, 2}
+		oneSliceAsWord
+	}{1, 2, []int{1, 1}}
 	v1 := make(map[string][]string)
 
 	encoder := NewEncoder()
 	encoder.RegisterEncoder(s1.oneAsWord, func(v reflect.Value) string { return "one" })
 	encoder.RegisterEncoder(s1.twoAsWord, func(v reflect.Value) string { return "two" })
+	encoder.RegisterEncoder(s1.oneSliceAsWord, func(v reflect.Value) string { return "one" })
 
 	encoder.Encode(s1, v1)
 
 	valExists(t, "oneAsWord", "one", v1)
 	valExists(t, "twoAsWord", "two", v1)
+	valExists(t, "oneSliceAsWord", "one", v1)
 }
 
 func valExists(t *testing.T, key string, expect string, result map[string][]string) {
-	if val, ok := result[key]; !ok {
-		t.Error("Key not found. Expected: " + expect)
-	} else if val[0] != expect {
-		t.Error("Unexpected value. Expected: " + expect + "; got: " + val[0] + ".")
+	valsExist(t, key, []string{expect}, result)
+}
+
+func valsExist(t *testing.T, key string, expect []string, result map[string][]string) {
+	vals, ok := result[key]
+	if !ok {
+		t.Fatalf("Key not found. Expected: %s", key)
+	}
+
+	if len(expect) != len(vals) {
+		t.Fatalf("Expected: %v, got: %v", expect, vals)
+	}
+
+	for i, v := range expect {
+		if vals[i] != v {
+			t.Fatalf("Unexpected value. Expected: %v, got %v", v, vals[i])
+		}
 	}
 }
 

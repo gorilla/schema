@@ -51,10 +51,26 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
 		if v.Field(i).Type().Kind() == reflect.Struct {
 			e.encode(v.Field(i), dst)
 			continue
+		}
+
+		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
+
+		// Encode non-slice types and custom implementations immediately.
+		if encFunc != nil {
+			value := encFunc(v.Field(i))
+			if value == "" && opts.Contains("omitempty") {
+				continue
+			}
+
+			dst[name] = append(dst[name], value)
+			continue
+		}
+
+		if v.Field(i).Type().Kind() == reflect.Slice {
+			encFunc = typeEncoder(v.Field(i).Type().Elem(), e.regenc)
 		}
 
 		if encFunc == nil {
@@ -62,12 +78,15 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		value := encFunc(v.Field(i))
-		if value == "" && opts.Contains("omitempty") {
+		// Encode a slice.
+		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
 			continue
 		}
 
-		dst[name] = []string{value}
+		dst[name] = []string{}
+		for j := 0; j < v.Field(i).Len(); j++ {
+			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+		}
 	}
 
 	return errors

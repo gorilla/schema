@@ -139,6 +139,7 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 			}
 			if ft.Kind() == reflect.Struct {
 				c.create(ft, info)
+				continue
 			}
 		}
 		c.createField(field, info)

@@ -1458,3 +1458,33 @@ func TestRequiredField(t *testing.T) {
 		return
 	}
 }
+
+type AS1 struct {
+	A int32 `schema:"a,required"`
+}
+type AS2 struct {
+	AS1
+	B string `schema:"b,required"`
+}
+
+func TestAnonymousStructField(t *testing.T) {
+	var a AS2
+	v := map[string][]string{
+		"a": {"1"},
+		"b": {"abc"},
+	}
+	err := NewDecoder().Decode(&a, v)
+	if err != nil {
+		t.Errorf("Decode failed %s", err)
+		return
+	}
+	if a.A != 1 {
+		t.Errorf("A: expected %v, got %v", 1, a.A)
+	}
+	if a.B != "abc" {
+		t.Errorf("B: expected %v, got %v", "abc", a.B)
+	}
+	if a.AS1.A != 1 {
+		t.Errorf("AS1.A: expected %v, got %v", 1, a.AS1.A)
+	}
+}

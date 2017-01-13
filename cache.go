@@ -138,7 +138,12 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 				ft = ft.Elem()
 			}
 			if ft.Kind() == reflect.Struct {
+				bef := len(info.fields)
 				c.create(ft, info)
+				for _, fi := range info.fields[bef:len(info.fields)] {
+					// exclude required check because duplicated to embedded field
+					fi.required = false
+				}
 			}
 		}
 		c.createField(field, info)
@@ -184,6 +189,7 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		name:     field.Name,
 		ss:       isSlice && isStruct,
 		alias:    alias,
+		anon:     field.Anonymous,
 		required: options.Contains("required"),
 	})
 }
@@ -217,6 +223,7 @@ type fieldInfo struct {
 	name     string // field name in the struct.
 	ss       bool   // true if this is a slice of structs.
 	alias    string
+	anon     bool // is an embedded field
 	required bool // tag option
 }
 

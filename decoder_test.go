@@ -1458,3 +1458,93 @@ func TestRequiredField(t *testing.T) {
 		return
 	}
 }
+
+type AS1 struct {
+	A int32 `schema:"a,required"`
+	E int32 `schema:"e,required"`
+}
+type AS2 struct {
+	AS1
+	B string `schema:"b,required"`
+}
+type AS3 struct {
+	C int32 `schema:"c"`
+}
+
+type AS4 struct {
+	AS3
+	D string `schema:"d"`
+}
+
+func TestAnonymousStructField(t *testing.T) {
+	patterns := []map[string][]string{
+		{
+			"a": {"1"},
+			"e": {"2"},
+			"b": {"abc"},
+		},
+		{
+			"AS1.a": {"1"},
+			"AS1.e": {"2"},
+			"b":     {"abc"},
+		},
+	}
+	for _, v := range patterns {
+		a := AS2{}
+		err := NewDecoder().Decode(&a, v)
+		if err != nil {
+			t.Errorf("Decode failed %s, %#v", err, v)
+			continue
+		}
+		if a.A != 1 {
+			t.Errorf("A: expected %v, got %v", 1, a.A)
+		}
+		if a.E != 2 {
+			t.Errorf("E: expected %v, got %v", 2, a.E)
+		}
+		if a.B != "abc" {
+			t.Errorf("B: expected %v, got %v", "abc", a.B)
+		}
+		if a.AS1.A != 1 {
+			t.Errorf("AS1.A: expected %v, got %v", 1, a.AS1.A)
+		}
+		if a.AS1.E != 2 {
+			t.Errorf("AS1.E: expected %v, got %v", 2, a.AS1.E)
+		}
+	}
+	a := AS2{}
+	err := NewDecoder().Decode(&a, map[string][]string{
+		"e": {"2"},
+		"b": {"abc"},
+	})
+	if err == nil {
+		t.Errorf("error nil, a is empty expect")
+	}
+	patterns = []map[string][]string{
+		{
+			"c": {"1"},
+			"d": {"abc"},
+		},
+		{
+			"AS3.c": {"1"},
+			"d":     {"abc"},
+		},
+	}
+	for _, v := range patterns {
+		a := AS4{}
+		err := NewDecoder().Decode(&a, v)
+		if err != nil {
+			t.Errorf("Decode failed %s, %#v", err, v)
+			continue
+		}
+		if a.C != 1 {
+			t.Errorf("C: expected %v, got %v", 1, a.C)
+		}
+		if a.D != "abc" {
+			t.Errorf("D: expected %v, got %v", "abc", a.D)
+		}
+		if a.AS3.C != 1 {
+			t.Errorf("AS3.C: expected %v, got %v", 1, a.AS3.C)
+		}
+	}
+}

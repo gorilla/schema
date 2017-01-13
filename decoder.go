@@ -109,6 +109,7 @@ func (d *Decoder) checkRequired(t reflect.Type, src map[string][]string, prefix 
 				if !f.anon {
 					return err
 				}
+				// check embedded parent field.
 				err2 := d.checkRequired(f.typ, src, prefix)
 				if err2 != nil {
 					return err

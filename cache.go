@@ -141,6 +141,7 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 				bef := len(info.fields)
 				c.create(ft, info)
 				for _, fi := range info.fields[bef:len(info.fields)] {
+					// exclude required check because duplicated to embedded field
 					fi.required = false
 				}
 			}

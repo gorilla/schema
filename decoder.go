@@ -106,7 +106,13 @@ func (d *Decoder) checkRequired(t reflect.Type, src map[string][]string, prefix 
 		if f.typ.Kind() == reflect.Struct {
 			err := d.checkRequired(f.typ, src, prefix+f.alias+".")
 			if err != nil {
-				return err
+				if !f.anon {
+					return err
+				}
+				err2 := d.checkRequired(f.typ, src, prefix)
+				if err2 != nil {
+					return err
+				}
 			}
 		}
 		if f.required {

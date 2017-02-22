@@ -36,8 +36,8 @@ func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value)
 
 // SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
-func (d *Encoder) SetAliasTag(tag string) {
-	d.cache.tag = tag
+func (e *Encoder) SetAliasTag(tag string) {
+	e.cache.tag = tag
 }
 
 func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {

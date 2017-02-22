@@ -257,8 +257,7 @@ type E4 struct {
 }
 
 func TestEncoderSetAliasTag(t *testing.T) {
-	data := map[string][]string{
-	}
+	data := map[string][]string{}
 
 	s := E4{
 		ID: "foo",

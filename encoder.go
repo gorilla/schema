@@ -89,6 +89,10 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 	}
 
+	if len(errors) == 0 {
+		return nil
+	}
+
 	return errors
 }
 

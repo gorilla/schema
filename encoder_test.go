@@ -42,6 +42,10 @@ func TestFilled(t *testing.T) {
 	vals := make(map[string][]string)
 	errs := NewEncoder().Encode(s, vals)
 
+	if errs == nil {
+		t.Error("Expected error got nil")
+	}
+
 	valExists(t, "f01", "1", vals)
 	valNotExists(t, "f02", vals)
 	valExists(t, "f03", "three", vals)
@@ -51,11 +55,6 @@ func TestFilled(t *testing.T) {
 	valExists(t, "f08", "8", vals)
 	valExists(t, "f09", "1.618000", vals)
 	valExists(t, "F12", "12", vals)
-
-	emptyErr := MultiError{}
-	if errs.Error() == emptyErr.Error() {
-		t.Errorf("Expected error got %v", errs)
-	}
 }
 
 type Aa int

@@ -106,8 +106,14 @@ func TestCompat(t *testing.T) {
 	encoder.RegisterEncoder(src.F15, func(reflect.Value) string { return "1" })
 	decoder.RegisterConverter(src.F15, func(string) reflect.Value { return reflect.ValueOf(1) })
 
-	encoder.Encode(src, vals)
-	decoder.Decode(dst, vals)
+	err := encoder.Encode(src, vals)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
+	err = decoder.Decode(dst, vals)
+	if err != nil {
+		t.Errorf("Decoder has non-nil error: %v", err)
+	}
 
 	if *src != *dst {
 		t.Errorf("Decoder-Encoder compatibility: expected %v, got %v\n", src, dst)
@@ -121,8 +127,12 @@ func TestEmpty(t *testing.T) {
 		F03: "three",
 	}
 
+	estr := "schema: encoder not found for <nil>"
 	vals := make(map[string][]string)
-	_ = NewEncoder().Encode(s, vals)
+	err := NewEncoder().Encode(s, vals)
+	if err.Error() != estr {
+		t.Errorf("Expected: %s, got %v", estr, err)
+	}
 
 	valExists(t, "f03", "three", vals)
 	valNotExists(t, "f04", vals)
@@ -151,7 +161,10 @@ func TestSlices(t *testing.T) {
 
 	encoder := NewEncoder()
 	encoder.RegisterEncoder(ones[0], func(v reflect.Value) string { return "one" })
-	encoder.Encode(s1, vals)
+	err := encoder.Encode(s1, vals)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
 
 	valsExist(t, "ones", []string{"one", "one"}, vals)
 	valsExist(t, "ints", []string{"1", "1"}, vals)
@@ -181,8 +194,14 @@ func TestCompatSlices(t *testing.T) {
 		return reflect.ValueOf(2)
 	})
 
-	encoder.Encode(src, vals)
-	decoder.Decode(dst, vals)
+	err := encoder.Encode(src, vals)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
+	err = decoder.Decode(dst, vals)
+	if err != nil {
+		t.Errorf("Dncoder has non-nil error: %v", err)
+	}
 
 	if len(src.Ints) != len(dst.Ints) || len(src.Ones) != len(src.Ones) {
 		t.Fatalf("Expected %v, got %v", src, dst)
@@ -218,7 +237,10 @@ func TestRegisterEncoder(t *testing.T) {
 	encoder.RegisterEncoder(s1.twoAsWord, func(v reflect.Value) string { return "two" })
 	encoder.RegisterEncoder(s1.oneSliceAsWord, func(v reflect.Value) string { return "one" })
 
-	encoder.Encode(s1, v1)
+	err := encoder.Encode(s1, v1)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
 
 	valExists(t, "oneAsWord", "one", v1)
 	valExists(t, "twoAsWord", "two", v1)

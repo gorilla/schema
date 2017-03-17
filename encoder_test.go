@@ -273,3 +273,19 @@ func valNotExists(t *testing.T, key string, result map[string][]string) {
 		t.Error("Key not ommited. Expected: empty; got: " + val[0] + ".")
 	}
 }
+
+type E4 struct {
+	ID string `json:"id"`
+}
+
+func TestEncoderSetAliasTag(t *testing.T) {
+	data := map[string][]string{}
+
+	s := E4{
+		ID: "foo",
+	}
+	encoder := NewEncoder()
+	encoder.SetAliasTag("json")
+	encoder.Encode(&s, data)
+	valExists(t, "id", "foo", data)
+}

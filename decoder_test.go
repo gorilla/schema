@@ -1217,6 +1217,43 @@ func TestRegisterConverterSlice(t *testing.T) {
 	}
 }
 
+func TestRegisterConverterMap(t *testing.T) {
+	decoder := NewDecoder()
+	decoder.IgnoreUnknownKeys(false)
+	decoder.RegisterConverter(map[string]string{}, func(input string) reflect.Value {
+		m := make(map[string]string)
+		for _, pair := range strings.Split(input, ",") {
+			parts := strings.Split(pair, ":")
+			switch len(parts) {
+			case 2:
+				m[parts[0]] = parts[1]
+			}
+		}
+		return reflect.ValueOf(m)
+	})
+
+	result := struct {
+		Multiple map[string]string `schema:"multiple"`
+	}{}
+
+	err := decoder.Decode(&result, map[string][]string{
+		"multiple": []string{"a:one,b:two"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := map[string]string{"a": "one", "b": "two"}
+	for k, v := range expected {
+		got, ok := result.Multiple[k]
+		if !ok {
+			t.Fatalf("got %v, want %v", result.Multiple, expected)
+		}
+		if got != v {
+			t.Errorf("got %s, want %s", got, v)
+		}
+	}
+}
+
 type S13 struct {
 	Value []S14
 }

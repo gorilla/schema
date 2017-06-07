@@ -15,25 +15,44 @@ import (
 
 type IntAlias int
 
+type rudeBool bool
+
+func (id *rudeBool) UnmarshalText(text []byte) error {
+	value := string(text)
+	switch {
+	case strings.EqualFold("Yup", value):
+		*id = true
+	case strings.EqualFold("Nope", value):
+		*id = false
+	default:
+		return errors.New("value must be yup or nope")
+	}
+	return nil
+}
+
 // All cases we want to cover, in a nutshell.
 type S1 struct {
-	F01 int        `schema:"f1"`
-	F02 *int       `schema:"f2"`
-	F03 []int      `schema:"f3"`
-	F04 []*int     `schema:"f4"`
-	F05 *[]int     `schema:"f5"`
-	F06 *[]*int    `schema:"f6"`
-	F07 S2         `schema:"f7"`
-	F08 *S1        `schema:"f8"`
-	F09 int        `schema:"-"`
-	F10 []S1       `schema:"f10"`
-	F11 []*S1      `schema:"f11"`
-	F12 *[]S1      `schema:"f12"`
-	F13 *[]*S1     `schema:"f13"`
-	F14 int        `schema:"f14"`
-	F15 IntAlias   `schema:"f15"`
-	F16 []IntAlias `schema:"f16"`
-	F17 S19        `schema:"f17"`
+	F01 int         `schema:"f1"`
+	F02 *int        `schema:"f2"`
+	F03 []int       `schema:"f3"`
+	F04 []*int      `schema:"f4"`
+	F05 *[]int      `schema:"f5"`
+	F06 *[]*int     `schema:"f6"`
+	F07 S2          `schema:"f7"`
+	F08 *S1         `schema:"f8"`
+	F09 int         `schema:"-"`
+	F10 []S1        `schema:"f10"`
+	F11 []*S1       `schema:"f11"`
+	F12 *[]S1       `schema:"f12"`
+	F13 *[]*S1      `schema:"f13"`
+	F14 int         `schema:"f14"`
+	F15 IntAlias    `schema:"f15"`
+	F16 []IntAlias  `schema:"f16"`
+	F17 S19         `schema:"f17"`
+	F18 rudeBool    `schema:"f18"`
+	F19 *rudeBool   `schema:"f19"`
+	F20 []rudeBool  `schema:"f20"`
+	F21 []*rudeBool `schema:"f21"`
 }
 
 type S2 struct {
@@ -79,6 +98,10 @@ func TestAll(t *testing.T) {
 		"f15":            {"151"},
 		"f16":            {"161", "162"},
 		"f17":            {"1a2b"},
+		"f18":            {"yup"},
+		"f19":            {"nope"},
+		"f20":            {"nope", "yup"},
+		"f21":            {"yup", "nope"},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -91,6 +114,7 @@ func TestAll(t *testing.T) {
 	f131, f132, f133, f134 := 131, 132, 133, 134
 	var f151 IntAlias = 151
 	var f161, f162 IntAlias = 161, 162
+	var f152, f153 rudeBool = true, false
 	e := S1{
 		F01: 1,
 		F02: &f2,
@@ -145,6 +169,10 @@ func TestAll(t *testing.T) {
 		F15: f151,
 		F16: []IntAlias{f161, f162},
 		F17: S19{0x1a, 0x2b},
+		F18: f152,
+		F19: &f153,
+		F20: []rudeBool{f153, f152},
+		F21: []*rudeBool{&f152, &f153},
 	}
 
 	s := &S1{}
@@ -338,6 +366,26 @@ func TestAll(t *testing.T) {
 	}
 	if s.F17 != e.F17 {
 		t.Errorf("f17: expected %v, got %v", e.F17, s.F17)
+	}
+	if s.F18 != e.F18 {
+		t.Errorf("f18: expected %v, got %v", e.F18, s.F18)
+	}
+	if *s.F19 != *e.F19 {
+		t.Errorf("f19: expected %v, got %v", *e.F19, *s.F19)
+	}
+	if s.F20 == nil {
+		t.Errorf("f20: nil")
+	} else if len(s.F20) != len(e.F20) {
+		t.Errorf("f20: expected %v, got %v", e.F20, s.F20)
+	} else if !reflect.DeepEqual(s.F20, e.F20) {
+		t.Errorf("f20: expected %v, got %v", e.F20, s.F20)
+	}
+	if s.F21 == nil {
+		t.Errorf("f21: nil")
+	} else if len(s.F21) != len(e.F21) {
+		t.Errorf("f21: expected length %d, got %d", len(e.F21), len(s.F21))
+	} else if !reflect.DeepEqual(s.F21, e.F21) {
+		t.Errorf("f21: expected %v, got %v", e.F21, s.F21)
 	}
 }
 
@@ -595,6 +643,7 @@ type S4 struct {
 	F01 int64
 	F02 float64
 	F03 bool
+	F04 rudeBool
 }
 
 func TestConversionError(t *testing.T) {
@@ -602,12 +651,13 @@ func TestConversionError(t *testing.T) {
 		"F01": {"foo"},
 		"F02": {"bar"},
 		"F03": {"baz"},
+		"F04": {"not-a-yes-or-nope"},
 	}
 	s := &S4{}
 	e := NewDecoder().Decode(s, data)
 
 	m := e.(MultiError)
-	if len(m) != 3 {
+	if len(m) != 4 {
 		t.Errorf("Expected 3 errors, got %v", m)
 	}
 }
@@ -703,7 +753,7 @@ func TestZeroEmpty(t *testing.T) {
 		"F01": {""},
 		"F03": {"true"},
 	}
-	s := S4{1, 1, false}
+	s := S4{1, 1, false, false}
 	d := NewDecoder()
 	d.ZeroEmpty(true)
 
@@ -727,7 +777,7 @@ func TestNoZeroEmpty(t *testing.T) {
 		"F01": {""},
 		"F03": {"true"},
 	}
-	s := S4{1, 1, false}
+	s := S4{1, 1, false, false}
 	d := NewDecoder()
 	d.ZeroEmpty(false)
 	err := d.Decode(&s, data)
@@ -742,6 +792,9 @@ func TestNoZeroEmpty(t *testing.T) {
 	}
 	if s.F03 != true {
 		t.Errorf("F03: got %v, want %v", s.F03, true)
+	}
+	if s.F04 != false {
+		t.Errorf("F04: got %v, want %v", s.F04, false)
 	}
 }
 

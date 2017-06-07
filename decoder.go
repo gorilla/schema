@@ -188,7 +188,6 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	if conv == nil && t.Kind() == reflect.Slice {
 		var items []reflect.Value
 		elemT := t.Elem()
-		//elemP := elemT
 		isPtrElem := elemT.Kind() == reflect.Ptr
 		if isPtrElem {
 			elemT = elemT.Elem()
@@ -207,8 +206,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				if d.zeroEmpty {
 					items = append(items, reflect.Zero(elemT))
 				}
-			} else if _, ok := isTextUnmarshaler(v); ok {
+			} else if m := isTextUnmarshaler(v); m.IsValid {
 				u := reflect.New(elemT)
+				if m.IsPtr {
+					u = reflect.New(reflect.PtrTo(elemT).Elem())
+				}
 				if err := u.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value)); err != nil {
 					return ConversionError{
 						Key:   path,
@@ -217,7 +219,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 						Err:   err,
 					}
 				}
-				if u.Kind() == reflect.Ptr {
+				if m.IsPtr {
+					items = append(items, u.Elem().Addr())
+				} else if u.Kind() == reflect.Ptr {
 					items = append(items, u.Elem())
 				} else {
 					items = append(items, u)
@@ -280,10 +284,10 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
-		} else if u, ok := isTextUnmarshaler(v); ok {
+		} else if m := isTextUnmarshaler(v); m.IsValid {
 			// If the value implements the encoding.TextUnmarshaler interface
 			// apply UnmarshalText as the converter
-			if err := u.UnmarshalText([]byte(val)); err != nil {
+			if err := m.Unmarshaler.UnmarshalText([]byte(val)); err != nil {
 				return ConversionError{
 					Key:   path,
 					Type:  t,
@@ -308,14 +312,18 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	return nil
 }
 
-func isTextUnmarshaler(v reflect.Value) (encoding.TextUnmarshaler, bool) {
+func isTextUnmarshaler(v reflect.Value) unmarshaler {
+
+	// Create a new unmarshaller instance
+	m := unmarshaler{}
+
 	// As the UnmarshalText function should be applied
 	// to the pointer of the type, we convert the value to pointer.
 	if v.CanAddr() {
 		v = v.Addr()
 	}
-	if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
-		return u, ok
+	if m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler); m.IsValid {
+		return m
 	}
 
 	// if v is []T or *[]T create new T
@@ -324,12 +332,27 @@ func isTextUnmarshaler(v reflect.Value) (encoding.TextUnmarshaler, bool) {
 		t = t.Elem()
 	}
 	if t.Kind() == reflect.Slice {
-		t = t.Elem()
+		// if t is a pointer slice, check if it implements encoding.TextUnmarshaler
+		if t = t.Elem(); t.Kind() == reflect.Ptr {
+			t = reflect.PtrTo(t.Elem())
+			v = reflect.Zero(t)
+			m.IsPtr = true
+			m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler)
+			return m
+		}
 	}
 
 	v = reflect.New(t)
-	u, ok := v.Interface().(encoding.TextUnmarshaler)
-	return u, ok
+	m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler)
+	return m
+}
+
+// TextUnmarshaler helpers ----------------------------------------------------
+// unmarshaller contains information about a TextUnmarshaler type
+type unmarshaler struct {
+	Unmarshaler encoding.TextUnmarshaler
+	IsPtr       bool
+	IsValid     bool
 }
 
 // Errors ---------------------------------------------------------------------

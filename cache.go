@@ -22,7 +22,7 @@ func newCache() *cache {
 		regconv: make(map[reflect.Type]Converter),
 		tag:     "schema",
 	}
-	for k, v := range converters {
+	for k, v := range Converters {
 		c.conv[k] = v
 	}
 	return &c

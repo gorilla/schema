@@ -143,6 +143,7 @@ func isEmpty(t reflect.Type, value []string) bool {
 
 // decode fills a struct field using a parsed path.
 func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values []string) error {
+
 	// Get the field walking the struct fields by index.
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
@@ -153,7 +154,6 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		}
 		v = v.FieldByName(name)
 	}
-
 	// Don't even bother for unexported fields.
 	if !v.CanSet() {
 		return nil
@@ -205,6 +205,26 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if value == "" {
 				if d.zeroEmpty {
 					items = append(items, reflect.Zero(elemT))
+				}
+			} else if m := isTextUnmarshaler(v); m.IsValid {
+				u := reflect.New(elemT)
+				if m.IsPtr {
+					u = reflect.New(reflect.PtrTo(elemT).Elem())
+				}
+				if err := u.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value)); err != nil {
+					return ConversionError{
+						Key:   path,
+						Type:  t,
+						Index: key,
+						Err:   err,
+					}
+				}
+				if m.IsPtr {
+					items = append(items, u.Elem().Addr())
+				} else if u.Kind() == reflect.Ptr {
+					items = append(items, u.Elem())
+				} else {
+					items = append(items, u)
 				}
 			} else if item := conv(value); item.IsValid() {
 				if isPtrElem {
@@ -264,6 +284,17 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
+		} else if m := isTextUnmarshaler(v); m.IsValid {
+			// If the value implements the encoding.TextUnmarshaler interface
+			// apply UnmarshalText as the converter
+			if err := m.Unmarshaler.UnmarshalText([]byte(val)); err != nil {
+				return ConversionError{
+					Key:   path,
+					Type:  t,
+					Index: -1,
+					Err:   err,
+				}
+			}
 		} else if conv != nil {
 			if value := conv(val); value.IsValid() {
 				v.Set(value.Convert(t))
@@ -275,29 +306,53 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				}
 			}
 		} else {
-			// When there's no registered conversion for the custom type, we will check if the type
-			// implements the TextUnmarshaler interface. As the UnmarshalText function should be applied
-			// to the pointer of the type, we convert the value to pointer.
-			if v.CanAddr() {
-				v = v.Addr()
-			}
-
-			if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
-				if err := u.UnmarshalText([]byte(val)); err != nil {
-					return ConversionError{
-						Key:   path,
-						Type:  t,
-						Index: -1,
-						Err:   err,
-					}
-				}
-
-			} else {
-				return fmt.Errorf("schema: converter not found for %v", t)
-			}
+			return fmt.Errorf("schema: converter not found for %v", t)
 		}
 	}
 	return nil
+}
+
+func isTextUnmarshaler(v reflect.Value) unmarshaler {
+
+	// Create a new unmarshaller instance
+	m := unmarshaler{}
+
+	// As the UnmarshalText function should be applied
+	// to the pointer of the type, we convert the value to pointer.
+	if v.CanAddr() {
+		v = v.Addr()
+	}
+	if m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler); m.IsValid {
+		return m
+	}
+
+	// if v is []T or *[]T create new T
+	t := v.Type()
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		// if t is a pointer slice, check if it implements encoding.TextUnmarshaler
+		if t = t.Elem(); t.Kind() == reflect.Ptr {
+			t = reflect.PtrTo(t.Elem())
+			v = reflect.Zero(t)
+			m.IsPtr = true
+			m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler)
+			return m
+		}
+	}
+
+	v = reflect.New(t)
+	m.Unmarshaler, m.IsValid = v.Interface().(encoding.TextUnmarshaler)
+	return m
+}
+
+// TextUnmarshaler helpers ----------------------------------------------------
+// unmarshaller contains information about a TextUnmarshaler type
+type unmarshaler struct {
+	Unmarshaler encoding.TextUnmarshaler
+	IsPtr       bool
+	IsValid     bool
 }
 
 // Errors ---------------------------------------------------------------------

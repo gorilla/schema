@@ -56,7 +56,7 @@ func (d *Decoder) IgnoreUnknownKeys(i bool) {
 
 // RegisterConverter registers a converter function for a custom type.
 func (d *Decoder) RegisterConverter(value interface{}, converterFunc Converter) {
-	d.cache.regconv[reflect.TypeOf(value)] = converterFunc
+	d.cache.registerConverter(value, converterFunc)
 }
 
 // Decode decodes a map[string][]string to a struct.
@@ -196,9 +196,12 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		// Try to get a converter for the element type.
 		conv := d.cache.converter(elemT)
 		if conv == nil {
-			// As we are not dealing with slice of structs here, we don't need to check if the type
-			// implements TextUnmarshaler interface
-			return fmt.Errorf("schema: converter not found for %v", elemT)
+			conv = builtinConverters[elemT.Kind()]
+			if conv == nil {
+				// As we are not dealing with slice of structs here, we don't need to check if the type
+				// implements TextUnmarshaler interface
+				return fmt.Errorf("schema: converter not found for %v", elemT)
+			}
 		}
 
 		for key, value := range values {
@@ -284,6 +287,16 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			if d.zeroEmpty {
 				v.Set(reflect.Zero(t))
 			}
+		} else if conv != nil {
+			if value := conv(val); value.IsValid() {
+				v.Set(value.Convert(t))
+			} else {
+				return ConversionError{
+					Key:   path,
+					Type:  t,
+					Index: -1,
+				}
+			}
 		} else if m := isTextUnmarshaler(v); m.IsValid {
 			// If the value implements the encoding.TextUnmarshaler interface
 			// apply UnmarshalText as the converter
@@ -295,7 +308,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 					Err:   err,
 				}
 			}
-		} else if conv != nil {
+		} else if conv := builtinConverters[t.Kind()]; conv != nil {
 			if value := conv(val); value.IsValid() {
 				v.Set(value.Convert(t))
 			} else {

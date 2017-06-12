@@ -1638,3 +1638,22 @@ func TestAnonymousStructField(t *testing.T) {
 		}
 	}
 }
+
+// Test to ensure that a registered converter overrides the default text unmarshaler.
+func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
+	type MyTime time.Time
+	s1 := &struct {
+		MyTime
+	}{}
+	decoder := NewDecoder()
+
+	ts := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	decoder.RegisterConverter(s1.MyTime, func(s string) reflect.Value { return reflect.ValueOf(ts) })
+
+	v1 := map[string][]string{"MyTime": {"4"}, "Bb": {"5"}}
+	decoder.Decode(s1, v1)
+
+	if s1.MyTime != MyTime(ts) {
+		t.Errorf("s1.Aa: expected %v, got %v", ts, s1.MyTime)
+	}
+}

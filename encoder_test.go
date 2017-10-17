@@ -247,6 +247,49 @@ func TestRegisterEncoder(t *testing.T) {
 	valExists(t, "oneSliceAsWord", "one", v1)
 }
 
+func TestEncoderOrder(t *testing.T) {
+	type builtinEncoderSimple int
+	type builtinEncoderSimpleOverridden int
+	type builtinEncoderSlice []int
+	type builtinEncoderSliceOverridden []int
+	type builtinEncoderStruct struct{ nr int }
+	type builtinEncoderStructOverridden struct{ nr int }
+
+	s1 := &struct {
+		builtinEncoderSimple           `schema:"simple"`
+		builtinEncoderSimpleOverridden `schema:"simple_overridden"`
+		builtinEncoderSlice            `schema:"slice"`
+		builtinEncoderSliceOverridden  `schema:"slice_overridden"`
+		builtinEncoderStruct           `schema:"struct"`
+		builtinEncoderStructOverridden `schema:"struct_overridden"`
+	}{
+		1,
+		1,
+		[]int{2},
+		[]int{2},
+		builtinEncoderStruct{3},
+		builtinEncoderStructOverridden{3},
+	}
+	v1 := make(map[string][]string)
+
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(s1.builtinEncoderSimpleOverridden, func(v reflect.Value) string { return "one" })
+	encoder.RegisterEncoder(s1.builtinEncoderSliceOverridden, func(v reflect.Value) string { return "two" })
+	encoder.RegisterEncoder(s1.builtinEncoderStructOverridden, func(v reflect.Value) string { return "three" })
+
+	err := encoder.Encode(s1, v1)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
+
+	valExists(t, "simple", "1", v1)
+	valExists(t, "simple_overridden", "one", v1)
+	valExists(t, "slice", "2", v1)
+	valExists(t, "slice_overridden", "two", v1)
+	valExists(t, "nr", "3", v1)
+	valExists(t, "struct_overridden", "three", v1)
+}
+
 func valExists(t *testing.T, key string, expect string, result map[string][]string) {
 	valsExist(t, key, []string{expect}, result)
 }

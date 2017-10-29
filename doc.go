@@ -24,7 +24,7 @@ The basic usage is really simple. Given this struct:
 
 This is just a simple example and it doesn't make a lot of sense to create
 the map manually. Typically it will come from a http.Request object and
-will be of type url.Values: http.Request.Form or http.Request.MultipartForm:
+will be of type url.Values, http.Request.Form, or http.Request.MultipartForm:
 
 	func MyHandler(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
@@ -45,7 +45,7 @@ will be of type url.Values: http.Request.Form or http.Request.MultipartForm:
 	}
 
 Note: it is a good idea to set a Decoder instance as a package global,
-because it caches meta-data about structs, and a instance can be shared safely:
+because it caches meta-data about structs, and an instance can be shared safely:
 
 	var decoder = schema.NewDecoder()
 

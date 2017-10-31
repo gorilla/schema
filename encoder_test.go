@@ -296,19 +296,32 @@ type E5 struct {
 	F03 *string `schema:"f03,omitempty"`
 	F04 *int8   `schema:"f04,omitempty"`
 	F05 float64 `schema:"f05,omitempty"`
+	F06 E5F06   `schema:"f06,omitempty"`
+	F07 E5F06   `schema:"f07,omitempty"`
+}
+
+type E5F06 struct {
+	F0601 string `schema:"f0601,omitempty"`
 }
 
 func TestEncoderWithOmitempty(t *testing.T) {
 	vals := map[string][]string{}
 
-	s := E5{}
+	s := E5{
+		F02: "test",
+		F07: E5F06{
+			F0601: "test",
+		},
+	}
 
 	encoder := NewEncoder()
 	encoder.Encode(&s, vals)
 
 	valNotExists(t, "f01", vals)
-	valNotExists(t, "f02", vals)
+	valExists(t, "f02", "test", vals)
 	valNotExists(t, "f03", vals)
 	valNotExists(t, "f04", vals)
 	valNotExists(t, "f05", vals)
+	valNotExists(t, "f06", vals)
+	valExists(t, "f0601", "test", vals)
 }

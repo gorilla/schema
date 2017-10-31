@@ -67,7 +67,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
 			value := encFunc(v.Field(i))
-			if value == "" && opts.Contains("omitempty") {
+			if opts.Contains("omitempty") {
 				continue
 			}
 

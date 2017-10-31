@@ -289,3 +289,26 @@ func TestEncoderSetAliasTag(t *testing.T) {
 	encoder.Encode(&s, data)
 	valExists(t, "id", "foo", data)
 }
+
+type E5 struct {
+	F01 int     `schema:"f01,omitempty"`
+	F02 string  `schema:"f02,omitempty"`
+	F03 *string `schema:"f03,omitempty"`
+	F04 *int8   `schema:"f04,omitempty"`
+	F05 float64 `schema:"f05,omitempty"`
+}
+
+func TestEncoderWithOmitempty(t *testing.T) {
+	vals := map[string][]string{}
+
+	s := E5{}
+
+	encoder := NewEncoder()
+	encoder.Encode(&s, vals)
+
+	valNotExists(t, "f01", vals)
+	valNotExists(t, "f02", vals)
+	valNotExists(t, "f03", vals)
+	valNotExists(t, "f04", vals)
+	valNotExists(t, "f05", vals)
+}

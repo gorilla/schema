@@ -291,13 +291,15 @@ func TestEncoderSetAliasTag(t *testing.T) {
 }
 
 type E5 struct {
-	F01 int     `schema:"f01,omitempty"`
-	F02 string  `schema:"f02,omitempty"`
-	F03 *string `schema:"f03,omitempty"`
-	F04 *int8   `schema:"f04,omitempty"`
-	F05 float64 `schema:"f05,omitempty"`
-	F06 E5F06   `schema:"f06,omitempty"`
-	F07 E5F06   `schema:"f07,omitempty"`
+	F01 int      `schema:"f01,omitempty"`
+	F02 string   `schema:"f02,omitempty"`
+	F03 *string  `schema:"f03,omitempty"`
+	F04 *int8    `schema:"f04,omitempty"`
+	F05 float64  `schema:"f05,omitempty"`
+	F06 E5F06    `schema:"f06,omitempty"`
+	F07 E5F06    `schema:"f07,omitempty"`
+	F08 []string `schema:"f08,omitempty"`
+	F09 []string `schema:"f09,omitempty"`
 }
 
 type E5F06 struct {
@@ -312,6 +314,7 @@ func TestEncoderWithOmitempty(t *testing.T) {
 		F07: E5F06{
 			F0601: "test",
 		},
+		F09: []string{"test"},
 	}
 
 	encoder := NewEncoder()
@@ -324,4 +327,6 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valNotExists(t, "f05", vals)
 	valNotExists(t, "f06", vals)
 	valExists(t, "f0601", "test", vals)
+	valNotExists(t, "f08", vals)
+	valsExist(t, "f09", []string{"test"}, vals)
 }

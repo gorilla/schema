@@ -62,6 +62,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
+		if v.Field(i).Type().Kind() == reflect.Ptr && v.Field(i).Elem().IsValid() && v.Field(i).Elem().Type().Kind() == reflect.Struct {
+			e.encode(v.Field(i).Elem(), dst)
+			continue
+		}
+
 		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
 
 		// Encode non-slice types and custom implementations immediately.
@@ -123,6 +128,7 @@ func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {
 			if v.IsNil() {
 				return "null"
 			}
+
 			return f(v.Elem())
 		}
 	case reflect.String:

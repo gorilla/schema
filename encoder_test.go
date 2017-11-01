@@ -330,3 +330,16 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valNotExists(t, "f08", vals)
 	valsExist(t, "f09", []string{"test"}, vals)
 }
+
+type E6 struct{ F01 *inner }
+
+func TestStructPointer(t *testing.T) {
+	vals := map[string][]string{}
+	s := E6{
+		F01: &inner{2},
+	}
+
+	encoder := NewEncoder()
+	encoder.Encode(&s, vals)
+	valExists(t, "F12", "2", vals)
+}

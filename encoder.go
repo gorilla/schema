@@ -62,6 +62,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
+		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if v.Field(i).Type().Kind() == reflect.Ptr && v.Field(i).Elem().IsValid() && v.Field(i).Elem().Type().Kind() == reflect.Struct {
 			e.encode(v.Field(i).Elem(), dst)
 			continue

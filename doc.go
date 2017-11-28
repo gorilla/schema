@@ -49,6 +49,11 @@ because it caches meta-data about structs, and an instance can be shared safely:
 
 	var decoder = schema.NewDecoder()
 
+Almost all configuration methods return the underlying instance, so it's possible to
+method chain them in the declaration.
+
+	var decoder = schema.NewDecoder().SetAliasTag("mycustomtag").IgnoreUnknownKeys(false)
+
 To define custom names for fields, use a struct tag "schema". To not populate
 certain fields, use a dash for the name and it will be ignored:
 

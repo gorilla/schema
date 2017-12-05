@@ -121,7 +121,7 @@ field, we could not translate multiple values to it if we did not use an
 index for the parent struct.
 
 There's also the possibility to create a custom type that implements the
-TextUnmarshaler interface, and in this case there's no need to registry
+TextUnmarshaler interface, and in this case there's no need to register
 a converter, like:
 
 	type Person struct {

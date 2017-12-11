@@ -40,6 +40,7 @@ func (e *Encoder) SetAliasTag(tag string) {
 	e.cache.tag = tag
 }
 
+// isValidStructPointer test if input value is a valid struct pointer.
 func isValidStructPointer(v reflect.Value) bool {
 	return v.Type().Kind() == reflect.Ptr && v.Elem().IsValid() && v.Elem().Type().Kind() == reflect.Struct
 }
@@ -66,6 +67,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
+		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if isValidStructPointer(v.Field(i)) {
 			e.encode(v.Field(i).Elem(), dst)
 			continue

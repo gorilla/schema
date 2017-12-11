@@ -40,6 +40,10 @@ func (e *Encoder) SetAliasTag(tag string) {
 	e.cache.tag = tag
 }
 
+func isValidStructPointer(v reflect.Value) bool {
+	return v.Type().Kind() == reflect.Ptr && v.Elem().IsValid() && v.Elem().Type().Kind() == reflect.Struct
+}
+
 func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -62,7 +66,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		if v.Field(i).Type().Kind() == reflect.Ptr && v.Field(i).Elem().IsValid() && v.Field(i).Elem().Type().Kind() == reflect.Struct {
+		if isValidStructPointer(v.Field(i)) {
 			e.encode(v.Field(i).Elem(), dst)
 			continue
 		}

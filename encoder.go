@@ -80,11 +80,6 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		if v.Field(i).Type().Kind() == reflect.Struct {
-			e.encode(v.Field(i), dst)
-			continue
-		}
-
 		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
 
 		// Encode non-slice types and custom implementations immediately.
@@ -95,6 +90,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			}
 
 			dst[name] = append(dst[name], value)
+			continue
+		}
+
+		if v.Field(i).Type().Kind() == reflect.Struct {
+			e.encode(v.Field(i), dst)
 			continue
 		}
 

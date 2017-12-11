@@ -378,6 +378,7 @@ func TestEncoderWithOmitempty(t *testing.T) {
 type E6 struct {
 	F01 *inner
 	F02 *inner
+	F03 *inner `schema:",omitempty"`
 }
 
 func TestStructPointer(t *testing.T) {
@@ -390,6 +391,7 @@ func TestStructPointer(t *testing.T) {
 	encoder.Encode(&s, vals)
 	valExists(t, "F12", "2", vals)
 	valExists(t, "F02", "null", vals)
+	valNotExists(t, "F03", vals)
 }
 
 func TestRegisterEncoderCustomArrayType(t *testing.T) {

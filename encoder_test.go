@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -329,4 +330,29 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valExists(t, "f0601", "test", vals)
 	valNotExists(t, "f08", vals)
 	valsExist(t, "f09", []string{"test"}, vals)
+}
+
+func TestRegisterEncoderCustomArrayType(t *testing.T) {
+	type CustomInt []int
+	type S1 struct {
+		SomeInts CustomInt `schema:",omitempty"`
+	}
+
+	ss := []S1{
+		{},
+		{CustomInt{}},
+		{CustomInt{1, 2, 3}},
+	}
+
+	for s := range ss {
+		vals := map[string][]string{}
+
+		encoder := NewEncoder()
+		encoder.RegisterEncoder(CustomInt{}, func(value reflect.Value) string {
+			return fmt.Sprint(value.Interface())
+		})
+
+		encoder.Encode(s, vals)
+		t.Log(vals)
+	}
 }

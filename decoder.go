@@ -143,7 +143,6 @@ func isEmpty(t reflect.Type, value []string) bool {
 
 // decode fills a struct field using a parsed path.
 func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values []string) error {
-
 	// Get the field walking the struct fields by index.
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
@@ -185,7 +184,8 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 	// Get the converter early in case there is one for a slice type.
 	conv := d.cache.converter(t)
-	if conv == nil && t.Kind() == reflect.Slice {
+	m := isTextUnmarshaler(v)
+	if conv == nil && t.Kind() == reflect.Slice && m.IsSlice {
 		var items []reflect.Value
 		elemT := t.Elem()
 		isPtrElem := elemT.Kind() == reflect.Ptr
@@ -209,7 +209,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 				if d.zeroEmpty {
 					items = append(items, reflect.Zero(elemT))
 				}
-			} else if m := isTextUnmarshaler(v); m.IsValid {
+			} else if m.IsValid {
 				u := reflect.New(elemT)
 				if m.IsPtr {
 					u = reflect.New(reflect.PtrTo(elemT).Elem())
@@ -297,7 +297,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 					Index: -1,
 				}
 			}
-		} else if m := isTextUnmarshaler(v); m.IsValid {
+		} else if m.IsValid {
 			// If the value implements the encoding.TextUnmarshaler interface
 			// apply UnmarshalText as the converter
 			if err := m.Unmarshaler.UnmarshalText([]byte(val)); err != nil {
@@ -346,6 +346,7 @@ func isTextUnmarshaler(v reflect.Value) unmarshaler {
 	}
 	if t.Kind() == reflect.Slice {
 		// if t is a pointer slice, check if it implements encoding.TextUnmarshaler
+		m.IsSlice = true
 		if t = t.Elem(); t.Kind() == reflect.Ptr {
 			t = reflect.PtrTo(t.Elem())
 			v = reflect.Zero(t)
@@ -364,6 +365,7 @@ func isTextUnmarshaler(v reflect.Value) unmarshaler {
 // unmarshaller contains information about a TextUnmarshaler type
 type unmarshaler struct {
 	Unmarshaler encoding.TextUnmarshaler
+	IsSlice     bool
 	IsPtr       bool
 	IsValid     bool
 }

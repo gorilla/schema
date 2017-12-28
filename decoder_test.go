@@ -1657,3 +1657,37 @@ func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
 		t.Errorf("s1.Aa: expected %v, got %v", ts, s1.MyTime)
 	}
 }
+
+type S20E string
+
+func (e *S20E) UnmarshalText(text []byte) error {
+	*e = S20E("x")
+	return nil
+}
+
+type S20 []S20E
+
+func (s *S20) UnmarshalText(text []byte) error {
+	*s = S20{"a", "b", "c"}
+	return nil
+}
+
+// Test to ensure that when a custom type based on a slice implements an
+// encoding.TextUnmarshaler interface that it takes precedence over any
+// implementations by its elements.
+func TestTextUnmarshalerTypeSlice(t *testing.T) {
+	data := map[string][]string{
+		"Value": []string{"a,b,c"},
+	}
+	s := struct {
+		Value S20
+	}{}
+	decoder := NewDecoder()
+	if err := decoder.Decode(&s, data); err != nil {
+		t.Error("Error while decoding:", err)
+	}
+	expected := S20{"a", "b", "c"}
+	if !reflect.DeepEqual(expected, s.Value) {
+		t.Errorf("Expected %v errors, got %v", expected, s.Value)
+	}
+}

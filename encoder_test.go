@@ -255,14 +255,18 @@ func TestEncoderOrder(t *testing.T) {
 	type builtinEncoderSliceOverridden []int
 	type builtinEncoderStruct struct{ nr int }
 	type builtinEncoderStructOverridden struct{ nr int }
+	type builtinEncoderStructPointer struct{ nr2 int }
+	type builtinEncoderStructPointerOverridden struct{ nr2 int }
 
 	s1 := &struct {
-		builtinEncoderSimple           `schema:"simple"`
-		builtinEncoderSimpleOverridden `schema:"simple_overridden"`
-		builtinEncoderSlice            `schema:"slice"`
-		builtinEncoderSliceOverridden  `schema:"slice_overridden"`
-		builtinEncoderStruct           `schema:"struct"`
-		builtinEncoderStructOverridden `schema:"struct_overridden"`
+		builtinEncoderSimple                   `schema:"simple"`
+		builtinEncoderSimpleOverridden         `schema:"simple_overridden"`
+		builtinEncoderSlice                    `schema:"slice"`
+		builtinEncoderSliceOverridden          `schema:"slice_overridden"`
+		builtinEncoderStruct                   `schema:"struct"`
+		builtinEncoderStructOverridden         `schema:"struct_overridden"`
+		*builtinEncoderStructPointer           `schema:"struct_pointer"`
+		*builtinEncoderStructPointerOverridden `schema:"struct_pointer_overridden"`
 	}{
 		1,
 		1,
@@ -270,6 +274,8 @@ func TestEncoderOrder(t *testing.T) {
 		[]int{2},
 		builtinEncoderStruct{3},
 		builtinEncoderStructOverridden{3},
+		&builtinEncoderStructPointer{4},
+		&builtinEncoderStructPointerOverridden{4},
 	}
 	v1 := make(map[string][]string)
 
@@ -277,6 +283,7 @@ func TestEncoderOrder(t *testing.T) {
 	encoder.RegisterEncoder(s1.builtinEncoderSimpleOverridden, func(v reflect.Value) string { return "one" })
 	encoder.RegisterEncoder(s1.builtinEncoderSliceOverridden, func(v reflect.Value) string { return "two" })
 	encoder.RegisterEncoder(s1.builtinEncoderStructOverridden, func(v reflect.Value) string { return "three" })
+	encoder.RegisterEncoder(s1.builtinEncoderStructPointerOverridden, func(v reflect.Value) string { return "four" })
 
 	err := encoder.Encode(s1, v1)
 	if err != nil {
@@ -289,6 +296,8 @@ func TestEncoderOrder(t *testing.T) {
 	valExists(t, "slice_overridden", "two", v1)
 	valExists(t, "nr", "3", v1)
 	valExists(t, "struct_overridden", "three", v1)
+	valExists(t, "nr2", "4", v1)
+	valExists(t, "struct_pointer_overridden", "four", v1)
 }
 
 func valExists(t *testing.T, key string, expect string, result map[string][]string) {

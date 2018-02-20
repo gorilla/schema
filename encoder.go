@@ -40,11 +40,6 @@ func (e *Encoder) SetAliasTag(tag string) {
 	e.cache.tag = tag
 }
 
-// isValidStructPointer test if input value is a valid struct pointer.
-func isValidStructPointer(v reflect.Value) bool {
-	return v.Type().Kind() == reflect.Ptr && v.Elem().IsValid() && v.Elem().Type().Kind() == reflect.Struct
-}
-
 func isZero(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Func:
@@ -85,9 +80,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		// Encode struct pointer types if the field is a valid pointer and a struct.
-		if isValidStructPointer(v.Field(i)) {
-			e.encode(v.Field(i).Elem(), dst)
+		if opts.Contains("omitempty") && isZero(v.Field(i)) {
 			continue
 		}
 
@@ -96,10 +89,6 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
 			value := encFunc(v.Field(i))
-			if opts.Contains("omitempty") && isZero(v.Field(i)) {
-				continue
-			}
-
 			dst[name] = append(dst[name], value)
 			continue
 		}
@@ -111,6 +100,16 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		if v.Field(i).Type().Kind() == reflect.Slice {
 			encFunc = typeEncoder(v.Field(i).Type().Elem(), e.regenc)
+		}
+
+		if v.Field(i).Type().Kind() == reflect.Ptr {
+			if v.Field(i).IsNil() {
+				dst[name] = append(dst[name], "null")
+				continue
+			} else {
+				e.encode(v.Field(i).Elem(), dst)
+				continue
+			}
 		}
 
 		if encFunc == nil {
@@ -153,10 +152,15 @@ func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {
 		return encodeFloat64
 	case reflect.Ptr:
 		f := typeEncoder(t.Elem(), reg)
+		if f == nil {
+			return nil
+		}
+
 		return func(v reflect.Value) string {
 			if v.IsNil() {
 				return "null"
 			}
+
 			return f(v.Elem())
 		}
 	case reflect.String:

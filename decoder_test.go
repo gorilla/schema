@@ -1737,3 +1737,33 @@ func TestTextUnmarshalerTypeSliceOfStructs(t *testing.T) {
 		t.Fatal("Expecting invalid path error", err)
 	}
 }
+
+type S22 string
+
+func (s *S22) UnmarshalText(text []byte) error {
+	*s = S22("a")
+	return nil
+}
+
+// Test to ensure that when a field that should be decoded into a type
+// implementing the encoding.TextUnmarshaler interface is set to an empty value
+// that the UnmarshalText method is utilized over other methods of decoding,
+// especially including simply setting the zero value.
+func TestTextUnmarshalerEmpty(t *testing.T) {
+	data := map[string][]string{
+		"Value": []string{""}, // empty value
+	}
+	// Implements encoding.TextUnmarshaler, should use the type's
+	// UnmarshalText method.
+	s := struct {
+		Value S22
+	}{}
+	decoder := NewDecoder()
+	if err := decoder.Decode(&s, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+	expected := S22("a")
+	if expected != s.Value {
+		t.Errorf("Expected %v errors, got %v", expected, s.Value)
+	}
+}

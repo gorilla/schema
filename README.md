@@ -29,7 +29,7 @@ func MyHandler(w http.ResponseWriter, r *http.Request) {
     var person Person
 
     // r.PostForm is a map of our POST form values
-    err := decoder.Decode(&person, r.PostForm)
+    err = decoder.Decode(&person, r.PostForm)
     if err != nil {
         // Handle error
     }

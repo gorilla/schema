@@ -295,7 +295,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			}
 		} else if m.IsValid {
 			if m.IsPtr {
-				u := reflect.New(v.Type())
+				u := v.Addr()
 				if err := u.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(val)); err != nil {
 					return ConversionError{
 						Key:   path,

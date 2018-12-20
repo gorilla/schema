@@ -1767,3 +1767,35 @@ func TestTextUnmarshalerEmpty(t *testing.T) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
 }
+
+type S23 struct {
+	v1 string
+	v2 int
+}
+
+func (s *S23) UnmarshalText(text []byte) error {
+	s.v1 = string(text)
+	return nil
+}
+
+// This test ensure that values of a struct are preserved when they are not modified
+// by the UnmarshalText method.
+func TestTextUnmarshalerInitialized(t *testing.T) {
+	data := map[string][]string{
+		"Value": []string{"hello"},
+	}
+
+	s := struct {
+		Value S23
+	}{
+		S23{v2: 100},
+	}
+	decoder := NewDecoder()
+	if err := decoder.Decode(&s, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+	expected := S23{v1: "hello", v2: 100}
+	if expected != s.Value {
+		t.Errorf("Expected %v, got %v", expected, s)
+	}
+}

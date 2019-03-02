@@ -1648,6 +1648,93 @@ func TestAnonymousStructField(t *testing.T) {
 	}
 }
 
+func TestAmbiguousStructField(t *testing.T) {
+	type I1 struct {
+		X int
+	}
+	type I2 struct {
+		I1
+	}
+	type B1 struct {
+		X bool
+	}
+	type B2 struct {
+		B1
+	}
+	type IB struct {
+		I1
+		B1
+	}
+	type S struct {
+		I1
+		I2
+		B1
+		B2
+		IB
+	}
+	dst := S{}
+	src := map[string][]string{
+		"X":    {"123"},
+		"IB.X": {"123"},
+	}
+	dec := NewDecoder()
+	dec.IgnoreUnknownKeys(false)
+	err := dec.Decode(&dst, src)
+	e, ok := err.(MultiError)
+	if !ok || len(e) != 2 {
+		t.Errorf("Expected 2 errors, got %#v", err)
+	}
+	if expected := (UnknownKeyError{Key: "X"}); e["X"] != expected {
+		t.Errorf("X: expected %#v, got %#v", expected, e["X"])
+	}
+	if expected := (UnknownKeyError{Key: "IB.X"}); e["IB.X"] != expected {
+		t.Errorf("X: expected %#v, got %#v", expected, e["IB.X"])
+	}
+	dec.IgnoreUnknownKeys(true)
+	err = dec.Decode(&dst, src)
+	if err != nil {
+		t.Errorf("Decode failed %v", err)
+	}
+
+	expected := S{
+		I1: I1{X: 123},
+		I2: I2{I1: I1{X: 234}},
+		B1: B1{X: true},
+		B2: B2{B1: B1{X: true}},
+		IB: IB{I1: I1{X: 345}, B1: B1{X: true}},
+	}
+	patterns := []map[string][]string{
+		{
+			"I1.X":    {"123"},
+			"I2.X":    {"234"},
+			"B1.X":    {"true"},
+			"B2.X":    {"1"},
+			"IB.I1.X": {"345"},
+			"IB.B1.X": {"on"},
+		},
+		{
+			"I1.X":    {"123"},
+			"I2.I1.X": {"234"},
+			"B1.X":    {"true"},
+			"B2.B1.X": {"1"},
+			"IB.I1.X": {"345"},
+			"IB.B1.X": {"on"},
+		},
+	}
+	for _, src := range patterns {
+		dst := S{}
+		dec := NewDecoder()
+		dec.IgnoreUnknownKeys(false)
+		err := dec.Decode(&dst, src)
+		if err != nil {
+			t.Errorf("Decode failed %v, %#v", err, src)
+		}
+		if !reflect.DeepEqual(expected, dst) {
+			t.Errorf("Expected %+v, got %+v", expected, dst)
+		}
+	}
+}
+
 // Test to ensure that a registered converter overrides the default text unmarshaler.
 func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
 	type MyTime time.Time

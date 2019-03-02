@@ -117,7 +117,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 	info := c.m[t]
 	c.l.RUnlock()
 	if info == nil {
-		info = c.create(t, nil)
+		info = c.create(t)
 		c.l.Lock()
 		c.m[t] = info
 		c.l.Unlock()
@@ -126,10 +126,9 @@ func (c *cache) get(t reflect.Type) *structInfo {
 }
 
 // create creates a structInfo with meta-data about a struct.
-func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
-	if info == nil {
-		info = &structInfo{fields: []*fieldInfo{}}
-	}
+func (c *cache) create(t reflect.Type) *structInfo {
+	info := &structInfo{}
+	var anonymousInfos []*structInfo
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		if field.Anonymous {
@@ -138,25 +137,34 @@ func (c *cache) create(t reflect.Type, info *structInfo) *structInfo {
 				ft = ft.Elem()
 			}
 			if ft.Kind() == reflect.Struct {
-				bef := len(info.fields)
-				c.create(ft, info)
-				for _, fi := range info.fields[bef:len(info.fields)] {
-					// exclude required check because duplicated to embedded field
-					fi.isRequired = false
-				}
+				anonymousInfos = append(anonymousInfos, c.create(ft))
 			}
 		}
-		c.createField(field, info)
+		if f := c.createField(field); f != nil {
+			info.fields = append(info.fields, f)
+		}
+	}
+	for i, a := range anonymousInfos {
+		others := []*structInfo{info}
+		others = append(others, anonymousInfos[:i]...)
+		others = append(others, anonymousInfos[i+1:]...)
+		for _, f := range a.fields {
+			if !containsAlias(others, f.alias) {
+				// exclude required check because duplicated to embedded field
+				f.isRequired = false
+				info.fields = append(info.fields, f)
+			}
+		}
 	}
 	return info
 }
 
 // createField creates a fieldInfo for the given field.
-func (c *cache) createField(field reflect.StructField, info *structInfo) {
+func (c *cache) createField(field reflect.StructField) *fieldInfo {
 	alias, options := fieldAlias(field, c.tag)
 	if alias == "-" {
 		// Ignore this field.
-		return
+		return nil
 	}
 	// Check if the type is supported and don't cache it if not.
 	// First let's get the basic type.
@@ -181,11 +189,11 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 	if isStruct = ft.Kind() == reflect.Struct; !isStruct {
 		if c.converter(ft) == nil && builtinConverters[ft.Kind()] == nil {
 			// Type is not supported.
-			return
+			return nil
 		}
 	}
 
-	info.fields = append(info.fields, &fieldInfo{
+	return &fieldInfo{
 		typ:              field.Type,
 		name:             field.Name,
 		alias:            alias,
@@ -193,7 +201,7 @@ func (c *cache) createField(field reflect.StructField, info *structInfo) {
 		isSliceOfStructs: isSlice && isStruct,
 		isAnonymous:      field.Anonymous,
 		isRequired:       options.Contains("required"),
-	})
+	}
 }
 
 // converter returns the converter for a type.
@@ -214,6 +222,15 @@ func (i *structInfo) get(alias string) *fieldInfo {
 		}
 	}
 	return nil
+}
+
+func containsAlias(infos []*structInfo, alias string) bool {
+	for _, info := range infos {
+		if info.get(alias) != nil {
+			return true
+		}
+	}
+	return false
 }
 
 type fieldInfo struct {

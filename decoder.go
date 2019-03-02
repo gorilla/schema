@@ -81,7 +81,7 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 				errors[path] = err
 			}
 		} else if !d.ignoreUnknownKeys {
-			errors[path] = fmt.Errorf("schema: invalid path %q", path)
+			errors[path] = UnknownKeyError{Key: path}
 		}
 	}
 	if len(errors) > 0 {
@@ -422,6 +422,15 @@ func (e ConversionError) Error() string {
 	}
 
 	return output
+}
+
+// UnknownKeyError stores information about an unknown key in the source map.
+type UnknownKeyError struct {
+	Key string // key from the source map.
+}
+
+func (e UnknownKeyError) Error() string {
+	return fmt.Sprintf("schema: invalid path %q", e.Key)
 }
 
 // MultiError stores multiple decoding errors.

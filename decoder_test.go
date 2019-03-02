@@ -1513,6 +1513,9 @@ func TestRequiredField(t *testing.T) {
 		t.Errorf("error nil, b.e is empty expect")
 		return
 	}
+	if expected := `b.e is empty`; err.Error() != expected {
+		t.Errorf("got %q, want %q", err, expected)
+	}
 
 	// all fields ok
 	v["b.e"] = []string{"nonempty"}
@@ -1528,6 +1531,9 @@ func TestRequiredField(t *testing.T) {
 	if err == nil {
 		t.Errorf("error nil, f is empty expect")
 		return
+	}
+	if expected := `f is empty`; err.Error() != expected {
+		t.Errorf("got %q, want %q", err, expected)
 	}
 	v["f"] = []string{"nonempty"}
 
@@ -1546,6 +1552,9 @@ func TestRequiredField(t *testing.T) {
 	if err == nil {
 		t.Errorf("error nil, h is empty expect")
 		return
+	}
+	if expected := `h is empty`; err.Error() != expected {
+		t.Errorf("got %q, want %q", err, expected)
 	}
 }
 

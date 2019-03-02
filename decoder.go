@@ -122,7 +122,7 @@ func (d *Decoder) checkRequired(t reflect.Type, src map[string][]string, prefix 
 				key = prefix + key
 			}
 			if isEmpty(f.typ, src[key]) {
-				return fmt.Errorf("%v is empty", key)
+				return EmptyFieldError{Key: key}
 			}
 		}
 	}
@@ -431,6 +431,15 @@ type UnknownKeyError struct {
 
 func (e UnknownKeyError) Error() string {
 	return fmt.Sprintf("schema: invalid path %q", e.Key)
+}
+
+// EmptyFieldError stores information about an empty required field.
+type EmptyFieldError struct {
+	Key string // required key in the source map.
+}
+
+func (e EmptyFieldError) Error() string {
+	return fmt.Sprintf("%v is empty", e.Key)
 }
 
 // MultiError stores multiple decoding errors.

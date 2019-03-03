@@ -1735,6 +1735,91 @@ func TestAmbiguousStructField(t *testing.T) {
 	}
 }
 
+func TestComprehensiveDecodingErrors(t *testing.T) {
+	type I1 struct {
+		V int  `schema:",required"`
+		P *int `schema:",required"`
+	}
+	type I2 struct {
+		I1
+		J I1
+	}
+	type S1 struct {
+		V string  `schema:"v,required"`
+		P *string `schema:"p,required"`
+	}
+	type S2 struct {
+		S1 `schema:"s"`
+		T  S1 `schema:"t"`
+	}
+	type D struct {
+		I2
+		X S2 `schema:"x"`
+		Y S2 `schema:"-"`
+	}
+	patterns := []map[string][]string{
+		{
+			"V":       {"invalid"}, // invalid
+			"I2.I1.P": {},          // empty
+			"I2.J.V":  {""},        // empty
+			"I2.J.P":  {"123"},     // ok
+			"x.s.v":   {""},        // empty
+			"x.s.p":   {""},        // ok
+			"x.t.v":   {"abc"},     // ok
+			"x.t.p":   {},          // empty
+			"Y.s.v":   {"ignored"}, // unknown
+		},
+		{
+			"V":     {"invalid"}, // invalid
+			"P":     {},          // empty
+			"J.V":   {""},        // empty
+			"J.P":   {"123"},     // ok
+			"x.v":   {""},        // empty
+			"x.p":   {""},        // ok
+			"x.t.v": {"abc"},     // ok
+			"x.t.p": {},          // empty
+			"Y.s.v": {"ignored"}, // unknown
+		},
+	}
+	for _, src := range patterns {
+		dst := D{}
+		dec := NewDecoder()
+		dec.IgnoreUnknownKeys(false)
+		err := dec.Decode(&dst, src)
+		e, ok := err.(MultiError)
+		if !ok || len(e) != 6 {
+			t.Errorf("Expected 6 errors, got %#v", err)
+		}
+		if cerr, ok := e["V"].(ConversionError); !ok {
+			t.Errorf("%s: expected %#v, got %#v", "I2.I1.V", ConversionError{Key: "V"}, cerr)
+		}
+		if key, expected := "I2.I1.P", (EmptyFieldError{Key: "I2.I1.P"}); e[key] != expected {
+			t.Errorf("%s: expected %#v, got %#v", key, expected, e[key])
+		}
+		if key, expected := "I2.J.V", (EmptyFieldError{Key: "I2.J.V"}); e[key] != expected {
+			t.Errorf("%s: expected %#v, got %#v", key, expected, e[key])
+		}
+		if key, expected := "x.s.v", (EmptyFieldError{Key: "x.s.v"}); e[key] != expected {
+			t.Errorf("%s: expected %#v, got %#v", key, expected, e[key])
+		}
+		if key, expected := "x.t.p", (EmptyFieldError{Key: "x.t.p"}); e[key] != expected {
+			t.Errorf("%s: expected %#v, got %#v", key, expected, e[key])
+		}
+		if key, expected := "Y.s.v", (UnknownKeyError{Key: "Y.s.v"}); e[key] != expected {
+			t.Errorf("%s: expected %#v, got %#v", key, expected, e[key])
+		}
+		if expected := 123; dst.I2.J.P == nil || *dst.I2.J.P != expected {
+			t.Errorf("I2.J.P: expected %#v, got %#v", expected, dst.I2.J.P)
+		}
+		if expected := ""; dst.X.S1.P == nil || *dst.X.S1.P != expected {
+			t.Errorf("X.S1.P: expected %#v, got %#v", expected, dst.X.S1.P)
+		}
+		if expected := "abc"; dst.X.T.V != expected {
+			t.Errorf("X.T.V: expected %#v, got %#v", expected, dst.X.T.V)
+		}
+	}
+}
+
 // Test to ensure that a registered converter overrides the default text unmarshaler.
 func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
 	type MyTime time.Time

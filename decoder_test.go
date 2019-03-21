@@ -1558,6 +1558,26 @@ func TestRequiredField(t *testing.T) {
 	}
 }
 
+func TestRequiredFieldIsMissingCorrectError(t *testing.T) {
+	type RM1S struct {
+		A string `schema:"rm1aa,required"`
+		B string `schema:"rm1bb,required"`
+	}
+	type RM1 struct {
+		RM1S
+	}
+
+	var a RM1
+	v := map[string][]string{
+		"rm1aa": {"aaa"},
+	}
+	expectedError := "rm1bb is empty"
+	err := NewDecoder().Decode(&a, v)
+	if err.Error() != expectedError {
+		t.Errorf("expected %v, got %v", expectedError, err)
+	}
+}
+
 type AS1 struct {
 	A int32 `schema:"a,required"`
 	E int32 `schema:"e,required"`

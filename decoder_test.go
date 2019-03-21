@@ -1571,7 +1571,7 @@ func TestRequiredFieldIsMissingCorrectError(t *testing.T) {
 	v := map[string][]string{
 		"rm1aa": {"aaa"},
 	}
-	expectedError := "rm1bb is empty"
+	expectedError := "RM1S.rm1bb is empty"
 	err := NewDecoder().Decode(&a, v)
 	if err.Error() != expectedError {
 		t.Errorf("expected %v, got %v", expectedError, err)

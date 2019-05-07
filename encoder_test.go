@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type E1 struct {
@@ -416,4 +417,31 @@ func TestRegisterEncoderCustomArrayType(t *testing.T) {
 
 		encoder.Encode(s, vals)
 	}
+}
+
+func TestIsZeroInterface(t *testing.T) {
+	vals := map[string][]string{}
+	s1 := struct {
+		Zero          time.Time `schema:"zero,omitempty"`
+		ZeroNoOmit    time.Time `schema:"zeronoomit"`
+		NotZero       time.Time `schema:"notzero,omitempty"`
+		NotZeroNoOmit time.Time `schema:"notzeronoomit"`
+	}{
+		time.Time{},
+		time.Time{},
+		time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+		time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+	}
+
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(time.Time{}, func(value reflect.Value) string {
+		t, _ := value.Interface().(time.Time)
+		return t.Format("2006-01-02")
+	})
+	encoder.Encode(s1, vals)
+
+	valNotExists(t, "zero", vals)
+	valExists(t, "zeronoomit", "0001-01-01", vals)
+	valExists(t, "notzeronoomit", "2006-01-02", vals)
+	valExists(t, "notzero", "2006-01-02", vals)
 }

@@ -46,6 +46,12 @@ func isValidStructPointer(v reflect.Value) bool {
 }
 
 func isZero(v reflect.Value) bool {
+	// check if the value confirms to the isZero() interface
+	// if so: use that interface
+	if z, ok := v.Interface().(interface{ IsZero() bool }); ok {
+		return z.IsZero()
+	}
+
 	switch v.Kind() {
 	case reflect.Func:
 	case reflect.Map, reflect.Slice:

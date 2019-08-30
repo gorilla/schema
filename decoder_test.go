@@ -1558,6 +1558,23 @@ func TestRequiredField(t *testing.T) {
 	}
 }
 
+type R2 struct {
+	A struct {
+		B int `schema:"b"`
+	} `schema:"a,required"`
+}
+
+func TestRequiredStructFiled(t *testing.T) {
+	v := map[string][]string{
+		"a.b": []string{"3"},
+	}
+	var a R2
+	err := NewDecoder().Decode(&a, v)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+}
+
 func TestRequiredFieldIsMissingCorrectError(t *testing.T) {
 	type RM1S struct {
 		A string `schema:"rm1aa,required"`

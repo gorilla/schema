@@ -1970,7 +1970,7 @@ func TestTextUnmarshalerEmpty(t *testing.T) {
 	}
 }
 
-// ------------------- Test custom name converter ---------------------------
+// ------------------- Test custom field name mapper ---------------------------
 
 type S23 struct {
 	FirstField         string
@@ -1978,7 +1978,7 @@ type S23 struct {
 	VeryLongThirdField string
 }
 
-func TestCustomNameConverter(t *testing.T) {
+func TestCustomFieldNameMapper(t *testing.T) {
 	data := map[string][]string{
 		"first_field":           []string{"first"},
 		"second_field":          []string{"second"},
@@ -1986,8 +1986,8 @@ func TestCustomNameConverter(t *testing.T) {
 		"very_long_third_field": []string{"third"},
 	}
 	d := NewDecoder()
-	// CamelCase to underscore converter
-	d.RegisterNameConverter(func(fieldName string) string {
+	// CamelCase to underscore mapper
+	d.RegisterFieldMapper(func(fieldName string) string {
 		var output []rune
 		for _, r := range fieldName {
 			if !unicode.IsLower(r) {
@@ -2003,7 +2003,7 @@ func TestCustomNameConverter(t *testing.T) {
 	})
 	out := &S23{}
 	d.Decode(out, data)
-	// check simple convertation
+	// check simple mapping
 	if out.FirstField != "first" {
 		t.Errorf("Expected 'first' got '%s'", out.FirstField)
 	}

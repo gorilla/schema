@@ -26,11 +26,11 @@ func newCache() *cache {
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l             sync.RWMutex
-	m             map[reflect.Type]*structInfo
-	regconv       map[reflect.Type]Converter
-	tag           string
-	nameConverter NameConverter
+	l               sync.RWMutex
+	m               map[reflect.Type]*structInfo
+	regconv         map[reflect.Type]Converter
+	tag             string
+	fieldNameMapper FieldNameMapper
 }
 
 // registerConverter registers a converter function for a custom type.
@@ -279,8 +279,8 @@ func (c *cache) fieldAlias(field reflect.StructField, tagName string) (alias str
 		alias, options = parseTag(tag)
 	}
 	if alias == "" {
-		if c.nameConverter != nil {
-			alias = c.nameConverter(field.Name)
+		if c.fieldNameMapper != nil {
+			alias = c.fieldNameMapper(field.Name)
 		} else {
 			alias = field.Name
 		}

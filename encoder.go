@@ -91,12 +91,6 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		// Encode struct pointer types if the field is a valid pointer and a struct.
-		if isValidStructPointer(v.Field(i)) {
-			e.encode(v.Field(i).Elem(), dst)
-			continue
-		}
-
 		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
 
 		// Encode non-slice types and custom implementations immediately.
@@ -126,6 +120,12 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		// Encode a slice.
 		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
+			continue
+		}
+
+		// Encode struct pointer types if the field is a valid pointer and a struct.
+		if isValidStructPointer(v.Field(i)) {
+			e.encode(v.Field(i).Elem(), dst)
 			continue
 		}
 

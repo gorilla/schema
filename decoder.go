@@ -152,8 +152,14 @@ type fieldWithPrefix struct {
 func isEmptyFields(fields []fieldWithPrefix, src map[string][]string) bool {
 	for _, f := range fields {
 		for _, path := range f.paths(f.prefix) {
-			if !isEmpty(f.typ, src[path]) {
+			v, ok := src[path]
+			if ok && !isEmpty(f.typ, v) {
 				return false
+			}
+			for key := range src {
+				if !isEmpty(f.typ, src[key]) && strings.HasPrefix(key, path) {
+					return false
+				}
 			}
 		}
 	}

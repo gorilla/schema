@@ -17,6 +17,8 @@ type IntAlias int
 
 type rudeBool bool
 
+type sliceID [2]byte
+
 func (id *rudeBool) UnmarshalText(text []byte) error {
 	value := string(text)
 	switch {
@@ -27,6 +29,14 @@ func (id *rudeBool) UnmarshalText(text []byte) error {
 	default:
 		return errors.New("value must be yup or nope")
 	}
+	return nil
+}
+
+func (id *sliceID) UnmarshalText(text []byte) error {
+	if len(text) != 2 {
+		return errors.New("value must 2 bytes length")
+	}
+	copy(id[:], text)
 	return nil
 }
 
@@ -53,6 +63,10 @@ type S1 struct {
 	F19 *rudeBool   `schema:"f19"`
 	F20 []rudeBool  `schema:"f20"`
 	F21 []*rudeBool `schema:"f21"`
+	F22 sliceID     `schema:"f22"`
+	F23 *sliceID    `schema:"f23"`
+	F24 []sliceID   `schema:"f24"`
+	F25 []*sliceID  `schema:"f25"`
 }
 
 type S2 struct {
@@ -102,6 +116,10 @@ func TestAll(t *testing.T) {
 		"f19":            {"nope"},
 		"f20":            {"nope", "yup"},
 		"f21":            {"yup", "nope"},
+		"f22":            {"A1"},
+		"f23":            {"A2"},
+		"f24":            {"A3", "A4"},
+		"f25":            {"A5", "A6"},
 	}
 	f2 := 2
 	f41, f42 := 41, 42
@@ -173,6 +191,10 @@ func TestAll(t *testing.T) {
 		F19: &f153,
 		F20: []rudeBool{f153, f152},
 		F21: []*rudeBool{&f152, &f153},
+		F22: sliceID{'A', '1'},
+		F23: &sliceID{'A', '2'},
+		F24: []sliceID{{'A', '3'}, {'A', '4'}},
+		F25: []*sliceID{{'A', '5'}, {'A', '6'}},
 	}
 
 	s := &S1{}
@@ -386,6 +408,26 @@ func TestAll(t *testing.T) {
 		t.Errorf("f21: expected length %d, got %d", len(e.F21), len(s.F21))
 	} else if !reflect.DeepEqual(s.F21, e.F21) {
 		t.Errorf("f21: expected %v, got %v", e.F21, s.F21)
+	}
+	if s.F22 != e.F22 {
+		t.Errorf("f22: expected %v, got %v", e.F22, s.F22)
+	}
+	if *s.F23 != *e.F23 {
+		t.Errorf("f23: expected %v, got %v", *e.F23, *s.F23)
+	}
+	if s.F24 == nil {
+		t.Errorf("f24: nil")
+	} else if len(s.F24) != len(e.F24) {
+		t.Errorf("f24: expected %v, got %v", e.F24, s.F24)
+	} else if !reflect.DeepEqual(s.F24, e.F24) {
+		t.Errorf("f24: expected %v, got %v", e.F24, s.F24)
+	}
+	if s.F25 == nil {
+		t.Errorf("f25: nil")
+	} else if len(s.F25) != len(e.F25) {
+		t.Errorf("f25: expected length %d, got %d", len(e.F25), len(s.F25))
+	} else if !reflect.DeepEqual(s.F25, e.F25) {
+		t.Errorf("f25: expected %v, got %v", e.F25, s.F25)
 	}
 }
 

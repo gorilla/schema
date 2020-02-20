@@ -684,8 +684,7 @@ func TestEmptyValueZeroEmpty(t *testing.T) {
 		"F01": {"", "foo"},
 	}
 	s := S5{}
-	d := NewDecoder()
-	d.ZeroEmpty(true)
+	d := NewDecoder().ZeroEmpty(true)
 	err := d.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
@@ -740,8 +739,7 @@ func TestSetAliasTag(t *testing.T) {
 	}
 
 	s := S8{}
-	dec := NewDecoder()
-	dec.SetAliasTag("json")
+	dec := NewDecoder().SetAliasTag("json")
 	dec.Decode(&s, data)
 	if s.ID != "foo" {
 		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
@@ -754,8 +752,7 @@ func TestZeroEmpty(t *testing.T) {
 		"F03": {"true"},
 	}
 	s := S4{1, 1, false, false}
-	d := NewDecoder()
-	d.ZeroEmpty(true)
+	d := NewDecoder().ZeroEmpty(true)
 
 	err := d.Decode(&s, data)
 	if err != nil {
@@ -778,8 +775,7 @@ func TestNoZeroEmpty(t *testing.T) {
 		"F03": {"true"},
 	}
 	s := S4{1, 1, false, false}
-	d := NewDecoder()
-	d.ZeroEmpty(false)
+	d := NewDecoder().ZeroEmpty(false)
 	err := d.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
@@ -851,8 +847,7 @@ func TestInvalidPathIgnoreUnknownKeys(t *testing.T) {
 		"Foo.Bar": {"baz"},
 	}
 	s := S9{}
-	dec := NewDecoder()
-	dec.IgnoreUnknownKeys(true)
+	dec := NewDecoder().IgnoreUnknownKeys(true)
 	err := dec.Decode(&s, data)
 	if err != nil {
 		t.Fatal(err)
@@ -1232,10 +1227,9 @@ func TestRegisterConverter(t *testing.T) {
 		Aa
 		Bb
 	}{}
-	decoder := NewDecoder()
-
-	decoder.RegisterConverter(s1.Aa, func(s string) reflect.Value { return reflect.ValueOf(1) })
-	decoder.RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
+	decoder := NewDecoder().
+		RegisterConverter(s1.Aa, func(s string) reflect.Value { return reflect.ValueOf(1) }).
+		RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
 
 	v1 := map[string][]string{"Aa": {"4"}, "Bb": {"5"}}
 	decoder.Decode(s1, v1)
@@ -1250,8 +1244,7 @@ func TestRegisterConverter(t *testing.T) {
 
 // Issue #40
 func TestRegisterConverterSlice(t *testing.T) {
-	decoder := NewDecoder()
-	decoder.RegisterConverter([]string{}, func(input string) reflect.Value {
+	decoder := NewDecoder().RegisterConverter([]string{}, func(input string) reflect.Value {
 		return reflect.ValueOf(strings.Split(input, ","))
 	})
 
@@ -1271,19 +1264,19 @@ func TestRegisterConverterSlice(t *testing.T) {
 }
 
 func TestRegisterConverterMap(t *testing.T) {
-	decoder := NewDecoder()
-	decoder.IgnoreUnknownKeys(false)
-	decoder.RegisterConverter(map[string]string{}, func(input string) reflect.Value {
-		m := make(map[string]string)
-		for _, pair := range strings.Split(input, ",") {
-			parts := strings.Split(pair, ":")
-			switch len(parts) {
-			case 2:
-				m[parts[0]] = parts[1]
+	decoder := NewDecoder().
+		IgnoreUnknownKeys(false).
+		RegisterConverter(map[string]string{}, func(input string) reflect.Value {
+			m := make(map[string]string)
+			for _, pair := range strings.Split(input, ",") {
+				parts := strings.Split(pair, ":")
+				switch len(parts) {
+				case 2:
+					m[parts[0]] = parts[1]
+				}
 			}
-		}
-		return reflect.ValueOf(m)
-	})
+			return reflect.ValueOf(m)
+		})
 
 	result := struct {
 		Multiple map[string]string `schema:"multiple"`
@@ -1714,8 +1707,7 @@ func TestAmbiguousStructField(t *testing.T) {
 		"X":    {"123"},
 		"IB.X": {"123"},
 	}
-	dec := NewDecoder()
-	dec.IgnoreUnknownKeys(false)
+	dec := NewDecoder().IgnoreUnknownKeys(false)
 	err := dec.Decode(&dst, src)
 	e, ok := err.(MultiError)
 	if !ok || len(e) != 2 {
@@ -1760,8 +1752,7 @@ func TestAmbiguousStructField(t *testing.T) {
 	}
 	for _, src := range patterns {
 		dst := S{}
-		dec := NewDecoder()
-		dec.IgnoreUnknownKeys(false)
+		dec := NewDecoder().IgnoreUnknownKeys(false)
 		err := dec.Decode(&dst, src)
 		if err != nil {
 			t.Errorf("Decode failed %v, %#v", err, src)
@@ -1820,8 +1811,7 @@ func TestComprehensiveDecodingErrors(t *testing.T) {
 	}
 	for _, src := range patterns {
 		dst := D{}
-		dec := NewDecoder()
-		dec.IgnoreUnknownKeys(false)
+		dec := NewDecoder().IgnoreUnknownKeys(false)
 		err := dec.Decode(&dst, src)
 		e, ok := err.(MultiError)
 		if !ok || len(e) != 6 {

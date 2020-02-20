@@ -30,14 +30,16 @@ func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
 }
 
 // RegisterEncoder registers a converter for encoding a custom type.
-func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value) string) {
+func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value) string) *Encoder {
 	e.regenc[reflect.TypeOf(value)] = encoder
+	return e
 }
 
 // SetAliasTag changes the tag used to locate custom field aliases.
 // The default tag is "schema".
-func (e *Encoder) SetAliasTag(tag string) {
+func (e *Encoder) SetAliasTag(tag string) *Encoder {
 	e.cache.tag = tag
+	return e
 }
 
 // isValidStructPointer test if input value is a valid struct pointer.

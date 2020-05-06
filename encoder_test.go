@@ -79,6 +79,12 @@ type E3 struct {
 	F15 Aa      `schema:"f15"`
 }
 
+type E7 struct {
+	F01 int `schema:"f01,required"`
+	F02 int `schema:"f02"`
+	F03 int `schema:"f03"`
+}
+
 // Test compatibility with default decoder types.
 func TestCompat(t *testing.T) {
 	src := &E3{
@@ -137,6 +143,19 @@ func TestEmpty(t *testing.T) {
 
 	valExists(t, "f03", "three", vals)
 	valNotExists(t, "f04", vals)
+}
+
+func TestRequired(t *testing.T) {
+	s := &E7{
+		F02: 2,
+		F03: 3,
+	}
+	vals := make(map[string][]string)
+	err := NewEncoder().Encode(s, vals)
+
+	if err == nil {
+		t.Error("Required element didn't throw error.")
+	}
 }
 
 func TestStruct(t *testing.T) {

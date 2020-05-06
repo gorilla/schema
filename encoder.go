@@ -100,6 +100,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 				continue
 			}
 
+			if opts.Contains("required") && isZero(v.Field(i)) {
+				errors[v.Field(i).Type().String()] = fmt.Errorf("schema: required field not given for %s", name)
+				continue
+			}
+
 			dst[name] = append(dst[name], value)
 			continue
 		}

@@ -1988,6 +1988,7 @@ func TestTextUnmarshalerEmpty(t *testing.T) {
 
 type S23n struct {
 	F2 string `schema:"F2"`
+	F3 string `schema:"F3"`
 }
 
 type S23e struct {
@@ -2000,6 +2001,7 @@ type S23 []*S23e
 func TestUnmashalPointerToEmbedded(t *testing.T) {
 	data := map[string][]string{
 		"A.0.F2": []string{"raw a"},
+		"A.0.F3": []string{"raw b"},
 	}
 
 	// Implements encoding.TextUnmarshaler, should not throw invalid path
@@ -2015,7 +2017,7 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 
 	expected := S23{
 		&S23e{
-			S23n: &S23n{"raw a"},
+			S23n: &S23n{"raw a", "raw b"},
 		},
 	}
 	if !reflect.DeepEqual(expected, s.Value) {

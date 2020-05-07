@@ -188,6 +188,17 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			}
 			v = v.Elem()
 		}
+
+		// alloc embedded structs
+		if v.Type().Kind() == reflect.Struct {
+			for i := 0; i < v.NumField(); i++ {
+				field := v.Field(i)
+				if field.Type().Kind() == reflect.Ptr && v.Type().Field(i).Anonymous == true {
+					field.Set(reflect.New(field.Type().Elem()))
+				}
+			}
+		}
+
 		v = v.FieldByName(name)
 	}
 	// Don't even bother for unexported fields.

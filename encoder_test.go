@@ -51,7 +51,7 @@ func TestFilled(t *testing.T) {
 	valExists(t, "f07", "seven", vals)
 	valExists(t, "f08", "8", vals)
 	valExists(t, "f09", "1.618000", vals)
-	valExists(t, "F12", "12", vals)
+	valExists(t, "F11.F12", "12", vals)
 
 	emptyErr := MultiError{}
 	if errs.Error() == emptyErr.Error() {
@@ -287,7 +287,7 @@ func TestEncoderOrder(t *testing.T) {
 	valExists(t, "simple_overridden", "one", v1)
 	valExists(t, "slice", "2", v1)
 	valExists(t, "slice_overridden", "two", v1)
-	valExists(t, "nr", "3", v1)
+	valExists(t, "struct.nr", "3", v1)
 	valExists(t, "struct_overridden", "three", v1)
 }
 
@@ -370,7 +370,7 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valNotExists(t, "f04", vals)
 	valNotExists(t, "f05", vals)
 	valNotExists(t, "f06", vals)
-	valExists(t, "f0601", "test", vals)
+	valExists(t, "f07.f0601", "test", vals)
 	valNotExists(t, "f08", vals)
 	valsExist(t, "f09", []string{"test"}, vals)
 }
@@ -389,7 +389,7 @@ func TestStructPointer(t *testing.T) {
 
 	encoder := NewEncoder()
 	encoder.Encode(&s, vals)
-	valExists(t, "F12", "2", vals)
+	valExists(t, "F01.F12", "2", vals)
 	valExists(t, "F02", "null", vals)
 	valNotExists(t, "F03", vals)
 }
@@ -416,4 +416,30 @@ func TestRegisterEncoderCustomArrayType(t *testing.T) {
 
 		encoder.Encode(s, vals)
 	}
+}
+
+type E7 struct {
+	F01 string
+	F02 inner
+	F03 inner `schema:"-"`
+}
+
+func TestEncodeForNestedType(t *testing.T) {
+	s := E7{
+		F01: "f01",
+		F02: inner{F12: 12},
+		F03: inner{F12: 12},
+	}
+
+	encoded := map[string][]string{}
+	encoder := NewEncoder()
+	err := encoder.Encode(s, encoded)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	valExists(t, "F01", "f01", encoded)
+	valExists(t, "F02.F12", "12", encoded)
+	valNotExists(t, "F03.F12", encoded)
 }

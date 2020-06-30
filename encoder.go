@@ -26,7 +26,7 @@ func NewEncoder() *Encoder {
 func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
 	v := reflect.ValueOf(src)
 
-	return e.encode(v, dst)
+	return e.encode(v, "", dst)
 }
 
 // RegisterEncoder registers a converter for encoding a custom type.
@@ -75,7 +75,7 @@ func isZero(v reflect.Value) bool {
 	return v.Interface() == z.Interface()
 }
 
-func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
+func (e *Encoder) encode(v reflect.Value, pathPrefix string, dst map[string][]string) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -94,7 +94,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if isValidStructPointer(v.Field(i)) {
-			e.encode(v.Field(i).Elem(), dst)
+			e.encode(v.Field(i).Elem(), pathPrefix+name+".", dst)
 			continue
 		}
 
@@ -107,12 +107,12 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 				continue
 			}
 
-			dst[name] = append(dst[name], value)
+			dst[pathPrefix+name] = append(dst[pathPrefix+name], value)
 			continue
 		}
 
 		if v.Field(i).Type().Kind() == reflect.Struct {
-			e.encode(v.Field(i), dst)
+			e.encode(v.Field(i), pathPrefix+name+".", dst)
 			continue
 		}
 
@@ -132,7 +132,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		dst[name] = []string{}
 		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+			dst[pathPrefix+name] = append(dst[pathPrefix+name], encFunc(v.Field(i).Index(j)))
 		}
 	}
 

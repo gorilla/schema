@@ -330,7 +330,11 @@ func TestEncoderSetAliasTag(t *testing.T) {
 	}
 	encoder := NewEncoder()
 	encoder.SetAliasTag("json")
-	encoder.Encode(&s, data)
+	err := encoder.Encode(&s, data)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
+
 	valExists(t, "id", "foo", data)
 }
 
@@ -362,7 +366,10 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	}
 
 	encoder := NewEncoder()
-	encoder.Encode(&s, vals)
+	err := encoder.Encode(&s, vals)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
 
 	valNotExists(t, "f01", vals)
 	valExists(t, "f02", "test", vals)
@@ -388,7 +395,11 @@ func TestStructPointer(t *testing.T) {
 	}
 
 	encoder := NewEncoder()
-	encoder.Encode(&s, vals)
+	err := encoder.Encode(&s, vals)
+	if err != nil {
+		t.Errorf("Encoder has non-nil error: %v", err)
+	}
+
 	valExists(t, "F12", "2", vals)
 	valExists(t, "F02", "null", vals)
 	valNotExists(t, "F03", vals)
@@ -414,6 +425,9 @@ func TestRegisterEncoderCustomArrayType(t *testing.T) {
 			return fmt.Sprint(value.Interface())
 		})
 
-		encoder.Encode(s, vals)
+		err := encoder.Encode(ss[s], vals)
+		if err != nil {
+			t.Errorf("Encoder has non-nil error: %v", err)
+		}
 	}
 }

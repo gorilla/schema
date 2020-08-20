@@ -60,7 +60,7 @@ func isZero(v reflect.Value) bool {
 		type zero interface {
 			IsZero() bool
 		}
-		if reflect.TypeOf(v).Implements(reflect.TypeOf((*zero)(nil)).Elem()) {
+		if v.Type().Implements(reflect.TypeOf((*zero)(nil)).Elem()) {
 			iz := v.MethodByName("IsZero").Call([]reflect.Value{})[0]
 			return iz.Interface().(bool)
 		}

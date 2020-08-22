@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type E1 struct {
@@ -415,5 +416,50 @@ func TestRegisterEncoderCustomArrayType(t *testing.T) {
 		})
 
 		encoder.Encode(s, vals)
+	}
+}
+
+func TestRegisterEncoderStructIsZero(t *testing.T) {
+	type S1 struct {
+		SomeTime1 time.Time `schema:"tim1,omitempty"`
+		SomeTime2 time.Time `schema:"tim2,omitempty"`
+	}
+
+	ss := []*S1{
+		{
+			SomeTime1: time.Date(2020, 8, 4, 13, 30, 1, 0, time.UTC),
+		},
+	}
+
+	for s := range ss {
+		vals := map[string][]string{}
+
+		encoder := NewEncoder()
+		encoder.RegisterEncoder(time.Time{}, func(value reflect.Value) string {
+			return value.Interface().(time.Time).Format(time.RFC3339Nano)
+		})
+
+		err := encoder.Encode(ss[s], vals)
+		if err != nil {
+			t.Errorf("Encoder has non-nil error: %v", err)
+		}
+
+		ta, ok := vals["tim1"]
+		if !ok {
+			t.Error("expected tim1 to be present")
+		}
+
+		if len(ta) != 1 {
+			t.Error("expected tim1 to be present")
+		}
+
+		if "2020-08-04T13:30:01Z" != ta[0] {
+			t.Error("expected correct tim1 time")
+		}
+
+		_, ok = vals["tim2"]
+		if ok {
+			t.Error("expected tim1 not to be present")
+		}
 	}
 }

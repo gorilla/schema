@@ -72,6 +72,16 @@ The supported field types in the destination struct are:
 Non-supported types are simply ignored, however custom types can be registered
 to be converted.
 
+Note: it can be unclear whether a user wishes to decode a string containing commas into
+a comma-delimited `[]string` or a `string` that includes commas. The default `Decoder` does not
+split on commas, but a custom decoder can be registered to handle the opposite case (or any other customized
+decoding logic):
+
+  decoder := NewDecoder()
+  decoder.RegisterConverter([]string{}, func(input string) reflect.Value {
+    return reflect.ValueOf(strings.Split(input, ","))
+  })
+
 To fill nested structs, keys must use a dotted notation as the "path" for the
 field. So for example, to fill the struct Person below:
 

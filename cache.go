@@ -63,7 +63,10 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 		}
 		// Valid field. Append index.
 		path = append(path, field.name)
-		if field.isSliceOfStructs && (!field.unmarshalerInfo.IsValid || (field.unmarshalerInfo.IsValid && field.unmarshalerInfo.IsSliceElement)) {
+
+		// if exist customized coverter, do not parse the special case
+		_, ok := c.regconv[field.typ]
+		if !ok && field.isSliceOfStructs && (!field.unmarshalerInfo.IsValid || (field.unmarshalerInfo.IsValid && field.unmarshalerInfo.IsSliceElement)) {
 			// Parse a special case: slices of structs.
 			// i+1 must be the slice index.
 			//

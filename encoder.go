@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type encoderFunc func(reflect.Value) string
@@ -23,6 +24,9 @@ func NewEncoder() *Encoder {
 // Encode encodes a struct into map[string][]string.
 //
 // Intended for use with url.Values.
+//
+// Tag options "comma", "space" and "semicolon" indicate that slice should be encoded using as single value
+// delimited by separator.
 func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
 	v := reflect.ValueOf(src)
 
@@ -130,10 +134,25 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		dst[name] = []string{}
+		ss := make([]string, v.Field(i).Len())
 		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+			ss[j] = encFunc(v.Field(i).Index(j))
 		}
+
+		var sep string
+		switch {
+		case opts.Contains("space"):
+			sep = " "
+		case opts.Contains("semicolon"):
+			sep = ";"
+		case opts.Contains("comma"):
+			sep = ","
+		}
+
+		if sep != "" {
+			ss = []string{strings.Join(ss, sep)}
+		}
+		dst[name] = ss
 	}
 
 	if len(errors) > 0 {

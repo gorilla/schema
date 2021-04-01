@@ -87,7 +87,22 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		sf := t.Field(i)
+
+		if sf.Anonymous {
+			t := sf.Type
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+
+			if t.Kind() != reflect.Struct && sf.PkgPath != "" {
+				continue // ignore unexported struct types
+			}
+		} else if sf.PkgPath != "" {
+			continue // ignore unexported fields
+		}
+
+		name, opts := fieldAlias(sf, e.cache.tag)
 		if name == "-" {
 			continue
 		}

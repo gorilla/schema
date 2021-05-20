@@ -319,6 +319,19 @@ func valNotExists(t *testing.T, key string, result map[string][]string) {
 	}
 }
 
+func valsLength(t *testing.T, expectedLength int, result map[string][]string) {
+	length := len(result)
+	if length != expectedLength {
+		t.Errorf("Expected length of %v, but got %v", expectedLength, length)
+	}
+}
+
+func noError(t *testing.T, err error) {
+	if err != nil {
+		t.Errorf("Unexpected error. Got %v", err)
+	}
+}
+
 type E4 struct {
 	ID string `json:"id"`
 }
@@ -462,4 +475,39 @@ func TestRegisterEncoderStructIsZero(t *testing.T) {
 			t.Error("expected tim1 not to be present")
 		}
 	}
+}
+
+func TestRegisterEncoderWithPtrType(t *testing.T) {
+	type CustomTime struct {
+		time time.Time
+	}
+
+	type S1 struct {
+		DateStart *CustomTime
+		DateEnd   *CustomTime
+		Empty     *CustomTime `schema:"empty,omitempty"`
+	}
+
+	ss := S1{
+		DateStart: &CustomTime{time: time.Now()},
+		DateEnd:   nil,
+	}
+
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(&CustomTime{}, func(value reflect.Value) string {
+		if value.IsNil() {
+			return ""
+		}
+
+		custom := value.Interface().(*CustomTime)
+		return custom.time.String()
+	})
+
+	vals := map[string][]string{}
+	err := encoder.Encode(ss, vals)
+
+	noError(t, err)
+	valsLength(t, 2, vals)
+	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
+	valExists(t, "DateEnd", "", vals)
 }

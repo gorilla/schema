@@ -93,7 +93,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
-		if isValidStructPointer(v.Field(i)) {
+		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
 			e.encode(v.Field(i).Elem(), dst)
 			continue
 		}
@@ -140,6 +140,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		return errors
 	}
 	return nil
+}
+
+func (e *Encoder) hasCustomEncoder(t reflect.Type) bool {
+	_, exists := e.regenc[t]
+	return exists
 }
 
 func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {

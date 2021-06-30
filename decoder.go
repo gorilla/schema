@@ -157,7 +157,7 @@ func isEmptyFields(fields []fieldWithPrefix, src map[string][]string) bool {
 				return false
 			}
 			for key := range src {
-				if !isEmpty(f.typ, src[key]) && strings.HasPrefix(key, path) {
+				if !isEmpty(f.typ, src[key]) && key == path {
 					return false
 				}
 			}

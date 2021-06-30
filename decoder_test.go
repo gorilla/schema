@@ -1560,8 +1560,8 @@ func TestRequiredField(t *testing.T) {
 
 type R2 struct {
 	A struct {
-		B int `schema:"b"`
-	} `schema:"a,required"`
+		B int `schema:"b,required"`
+	} `schema:"a"`
 }
 
 func TestRequiredStructFiled(t *testing.T) {

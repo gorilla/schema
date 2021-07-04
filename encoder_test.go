@@ -154,10 +154,10 @@ func TestSlices(t *testing.T) {
 	type oneAsWord int
 	ones := []oneAsWord{1, 2}
 	s1 := &struct {
-		ones     []oneAsWord `schema:"ones"`
-		ints     []int       `schema:"ints"`
-		nonempty []int       `schema:"nonempty"`
-		empty    []int       `schema:"empty,omitempty"`
+		Ones     []oneAsWord `schema:"ones"`
+		Ints     []int       `schema:"ints"`
+		Nonempty []int       `schema:"nonempty"`
+		Empty    []int       `schema:"empty,omitempty"`
 	}{ones, []int{1, 1}, []int{}, []int{}}
 	vals := make(map[string][]string)
 
@@ -223,21 +223,21 @@ func TestCompatSlices(t *testing.T) {
 }
 
 func TestRegisterEncoder(t *testing.T) {
-	type oneAsWord int
-	type twoAsWord int
-	type oneSliceAsWord []int
+	type OneAsWord int
+	type TwoAsWord int
+	type OneSliceAsWord []int
 
 	s1 := &struct {
-		oneAsWord
-		twoAsWord
-		oneSliceAsWord
+		OneAsWord      `schema:"oneAsWord"`
+		TwoAsWord      `schema:"twoAsWord"`
+		OneSliceAsWord `schema:"oneSliceAsWord"`
 	}{1, 2, []int{1, 1}}
 	v1 := make(map[string][]string)
 
 	encoder := NewEncoder()
-	encoder.RegisterEncoder(s1.oneAsWord, func(v reflect.Value) string { return "one" })
-	encoder.RegisterEncoder(s1.twoAsWord, func(v reflect.Value) string { return "two" })
-	encoder.RegisterEncoder(s1.oneSliceAsWord, func(v reflect.Value) string { return "one" })
+	encoder.RegisterEncoder(s1.OneAsWord, func(v reflect.Value) string { return "one" })
+	encoder.RegisterEncoder(s1.TwoAsWord, func(v reflect.Value) string { return "two" })
+	encoder.RegisterEncoder(s1.OneSliceAsWord, func(v reflect.Value) string { return "one" })
 
 	err := encoder.Encode(s1, v1)
 	if err != nil {
@@ -250,34 +250,38 @@ func TestRegisterEncoder(t *testing.T) {
 }
 
 func TestEncoderOrder(t *testing.T) {
-	type builtinEncoderSimple int
-	type builtinEncoderSimpleOverridden int
-	type builtinEncoderSlice []int
-	type builtinEncoderSliceOverridden []int
-	type builtinEncoderStruct struct{ nr int }
-	type builtinEncoderStructOverridden struct{ nr int }
+	type BuiltinEncoderSimple int
+	type BuiltinEncoderSimpleOverridden int
+	type BuiltinEncoderSlice []int
+	type BuiltinEncoderSliceOverridden []int
+	type BuiltinEncoderStruct struct {
+		Nr int `schema:"nr"`
+	}
+	type BuiltinEncoderStructOverridden struct {
+		Nr int `schema:"nr"`
+	}
 
 	s1 := &struct {
-		builtinEncoderSimple           `schema:"simple"`
-		builtinEncoderSimpleOverridden `schema:"simple_overridden"`
-		builtinEncoderSlice            `schema:"slice"`
-		builtinEncoderSliceOverridden  `schema:"slice_overridden"`
-		builtinEncoderStruct           `schema:"struct"`
-		builtinEncoderStructOverridden `schema:"struct_overridden"`
+		BuiltinEncoderSimple           `schema:"simple"`
+		BuiltinEncoderSimpleOverridden `schema:"simple_overridden"`
+		BuiltinEncoderSlice            `schema:"slice"`
+		BuiltinEncoderSliceOverridden  `schema:"slice_overridden"`
+		BuiltinEncoderStruct           `schema:"struct"`
+		BuiltinEncoderStructOverridden `schema:"struct_overridden"`
 	}{
 		1,
 		1,
 		[]int{2},
 		[]int{2},
-		builtinEncoderStruct{3},
-		builtinEncoderStructOverridden{3},
+		BuiltinEncoderStruct{3},
+		BuiltinEncoderStructOverridden{3},
 	}
 	v1 := make(map[string][]string)
 
 	encoder := NewEncoder()
-	encoder.RegisterEncoder(s1.builtinEncoderSimpleOverridden, func(v reflect.Value) string { return "one" })
-	encoder.RegisterEncoder(s1.builtinEncoderSliceOverridden, func(v reflect.Value) string { return "two" })
-	encoder.RegisterEncoder(s1.builtinEncoderStructOverridden, func(v reflect.Value) string { return "three" })
+	encoder.RegisterEncoder(s1.BuiltinEncoderSimpleOverridden, func(v reflect.Value) string { return "one" })
+	encoder.RegisterEncoder(s1.BuiltinEncoderSliceOverridden, func(v reflect.Value) string { return "two" })
+	encoder.RegisterEncoder(s1.BuiltinEncoderStructOverridden, func(v reflect.Value) string { return "three" })
 
 	err := encoder.Encode(s1, v1)
 	if err != nil {

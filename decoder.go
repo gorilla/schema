@@ -207,6 +207,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	}
 
 	// Dereference if needed.
+	raw := v
 	t := v.Type()
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -232,6 +233,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 	// Get the converter early in case there is one for a slice type.
 	conv := d.cache.converter(t)
+	if conv == nil {
+		conv = d.cache.converter(raw.Type())
+	}
 	m := isTextUnmarshaler(v)
 	if conv == nil && t.Kind() == reflect.Slice && m.IsSliceElement {
 		var items []reflect.Value
@@ -333,6 +337,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 		if conv != nil {
 			if value := conv(val); value.IsValid() {
+				if value.Type().Kind() == reflect.Ptr {
+					value = value.Elem()
+				}
 				v.Set(value.Convert(t))
 			} else {
 				return ConversionError{

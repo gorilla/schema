@@ -25,7 +25,6 @@ func NewEncoder() *Encoder {
 // Intended for use with url.Values.
 func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
 	v := reflect.ValueOf(src)
-
 	return e.encode(v, dst)
 }
 
@@ -87,6 +86,24 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
+		sf := t.Field(i)
+		isUnexported := sf.PkgPath != ""
+		if sf.Anonymous {
+			t := sf.Type
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			if isUnexported && t.Kind() != reflect.Struct {
+				// Ignore embedded fields of unexported non-struct types.
+				continue
+			}
+			// Do not ignore embedded fields of unexported struct types
+			// since they may have exported fields.
+		} else if isUnexported {
+			// Ignore unexported non-embedded fields.
+			continue
+		}
+
 		name, opts := fieldAlias(t.Field(i), e.cache.tag)
 		if name == "-" {
 			continue
@@ -143,8 +160,15 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 }
 
 func (e *Encoder) hasCustomEncoder(t reflect.Type) bool {
-	_, exists := e.regenc[t]
-	return exists
+	if _, exists := e.regenc[t]; exists {
+		return true
+	}
+	if t.Kind() == reflect.Ptr {
+		if _, exists := e.regenc[t.Elem()]; exists {
+			return true
+		}
+	}
+	return false
 }
 
 func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {

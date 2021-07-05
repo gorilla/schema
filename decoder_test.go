@@ -1576,13 +1576,13 @@ func TestRequiredStructFiled(t *testing.T) {
 }
 
 type Node struct {
-	Value int `schema:"val,required"`
-	Next *Node `schema:"next,required"`
+	Value int   `schema:"val,required"`
+	Next  *Node `schema:"next,required"`
 }
 
 func TestRecursiveStruct(t *testing.T) {
 	v := map[string][]string{
-		"val": []string{"1"},
+		"val":      []string{"1"},
 		"next.val": []string{"2"},
 	}
 	var a Node

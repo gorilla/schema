@@ -1560,8 +1560,8 @@ func TestRequiredField(t *testing.T) {
 
 type R2 struct {
 	A struct {
-		B int `schema:"b,required"`
-	} `schema:"a"`
+		B int `schema:"b"`
+	} `schema:"a,required"`
 }
 
 func TestRequiredStructFiled(t *testing.T) {
@@ -1569,6 +1569,23 @@ func TestRequiredStructFiled(t *testing.T) {
 		"a.b": []string{"3"},
 	}
 	var a R2
+	err := NewDecoder().Decode(&a, v)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+}
+
+type Node struct {
+	Value int `schema:"val,required"`
+	Next *Node `schema:"next,required"`
+}
+
+func TestRecursiveStruct(t *testing.T) {
+	v := map[string][]string{
+		"val": []string{"1"},
+		"next.val": []string{"2"},
+	}
+	var a Node
 	err := NewDecoder().Decode(&a, v)
 	if err != nil {
 		t.Errorf("error: %v", err)

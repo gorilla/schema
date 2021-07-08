@@ -157,7 +157,7 @@ func isEmptyFields(fields []fieldWithPrefix, src map[string][]string) bool {
 				return false
 			}
 			for key := range src {
-				nested := strings.Contains(key, ".")
+				nested := strings.IndexByte(key, '.') != -1
 
 				// for non required nested structs
 				c1 := strings.HasSuffix(f.prefix, ".") && key == path

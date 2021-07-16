@@ -243,7 +243,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 
 		// Try to get a converter for the element type.
 		conv := d.cache.converter(elemT)
-		if conv == nil {
+		if conv == nil && !m.IsValid {
 			conv = builtinConverters[elemT.Kind()]
 			if conv == nil {
 				// As we are not dealing with slice of structs here, we don't need to check if the type

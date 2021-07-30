@@ -143,3 +143,52 @@ func convertUint64(value string) reflect.Value {
 	}
 	return invalidValue
 }
+
+func convertPointer(k reflect.Kind, value string) reflect.Value {
+	switch k {
+	case boolType:
+		v := convertBool(value).Bool()
+		return reflect.ValueOf(&v)
+	case float32Type:
+		v := float32(convertFloat32(value).Float())
+		return reflect.ValueOf(&v)
+	case float64Type:
+		v := float64(convertFloat64(value).Float())
+		return reflect.ValueOf(&v)
+	case intType:
+		v := int(convertInt(value).Int())
+		return reflect.ValueOf(&v)
+	case int8Type:
+		v := int8(convertInt8(value).Int())
+		return reflect.ValueOf(&v)
+	case int16Type:
+		v := int16(convertInt16(value).Int())
+		return reflect.ValueOf(&v)
+	case int32Type:
+		v := int32(convertInt32(value).Int())
+		return reflect.ValueOf(&v)
+	case int64Type:
+		v := int64(convertInt64(value).Int())
+		return reflect.ValueOf(&v)
+	case stringType:
+		v := convertString(value).String()
+		return reflect.ValueOf(&v)
+	case uintType:
+		v := uint(convertUint(value).Uint())
+		return reflect.ValueOf(&v)
+	case uint8Type:
+		v := uint8(convertUint8(value).Uint())
+		return reflect.ValueOf(&v)
+	case uint16Type:
+		v := uint16(convertUint16(value).Uint())
+		return reflect.ValueOf(&v)
+	case uint32Type:
+		v := uint32(convertUint32(value).Uint())
+		return reflect.ValueOf(&v)
+	case uint64Type:
+		v := uint64(convertUint64(value).Uint())
+		return reflect.ValueOf(&v)
+	}
+
+	return invalidValue
+}

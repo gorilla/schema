@@ -17,19 +17,21 @@ var errInvalidPath = errors.New("schema: invalid path")
 // newCache returns a new cache.
 func newCache() *cache {
 	c := cache{
-		m:       make(map[reflect.Type]*structInfo),
-		regconv: make(map[reflect.Type]Converter),
-		tag:     "schema",
+		m:          make(map[reflect.Type]*structInfo),
+		regconv:    make(map[reflect.Type]Converter),
+		tag:        "schema",
+		defaultTag: "default",
 	}
 	return &c
 }
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l       sync.RWMutex
-	m       map[reflect.Type]*structInfo
-	regconv map[reflect.Type]Converter
-	tag     string
+	l          sync.RWMutex
+	m          map[reflect.Type]*structInfo
+	regconv    map[reflect.Type]Converter
+	tag        string
+	defaultTag string
 }
 
 // registerConverter registers a converter function for a custom type.
@@ -197,6 +199,7 @@ func (c *cache) createField(field reflect.StructField, parentAlias string) *fiel
 		isSliceOfStructs: isSlice && isStruct,
 		isAnonymous:      field.Anonymous,
 		isRequired:       options.Contains("required"),
+		defaultValue:     field.Tag.Get(c.defaultTag),
 	}
 }
 
@@ -246,8 +249,9 @@ type fieldInfo struct {
 	// isSliceOfStructs indicates if the field type is a slice of structs.
 	isSliceOfStructs bool
 	// isAnonymous indicates whether the field is embedded in the struct.
-	isAnonymous bool
-	isRequired  bool
+	isAnonymous  bool
+	isRequired   bool
+	defaultValue string
 }
 
 func (f *fieldInfo) paths(prefix string) []string {

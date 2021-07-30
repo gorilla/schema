@@ -84,10 +84,44 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 			errors[path] = UnknownKeyError{Key: path}
 		}
 	}
+	if err := d.setDefaults(t, v); err != nil {
+		errors.merge(MultiError{"defaults": err})
+	}
 	errors.merge(d.checkRequired(t, src))
 	if len(errors) > 0 {
 		return errors
 	}
+	return nil
+}
+
+func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) error {
+	struc := d.cache.get(t)
+	if struc == nil {
+		// unexpect, cache.get never return nil
+		return errors.New("cache fail")
+	}
+
+	for i, f := range struc.fields {
+		if f.defaultValue != "" && f.isRequired {
+			return errors.New("required fields cannot have a default value")
+		} else if f.defaultValue != "" && v.Field(i).IsZero() && !f.isRequired {
+			if f.typ.Kind() == reflect.Struct || f.typ.Kind() == reflect.Slice {
+				return errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")
+			} else if f.typ.Kind() == reflect.Ptr {
+				t1 := f.typ.Elem()
+
+				if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
+					return errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")
+				}
+
+				v.Field(i).Set(convertPointer(t1.Kind(), f.defaultValue))
+			} else {
+				v.Field(i).Set(builtinConverters[f.typ.Kind()](f.defaultValue))
+			}
+
+		}
+	}
+
 	return nil
 }
 

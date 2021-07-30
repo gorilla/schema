@@ -2055,3 +2055,143 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
 }
+
+func TestDefaultValuesAreSet(t *testing.T) {
+
+	type D struct {
+		S string  `schema:"s" default:"test1"`
+		I int     `schema:"i" default:"21"`
+		B bool    `schema:"b" default:"false"`
+		F float64 `schema:"f" default:"3.14"`
+		U uint    `schema:"u" default:"1"`
+	}
+
+	data := map[string][]string{}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		S: "test1",
+		I: 21,
+		B: false,
+		F: 3.14,
+		U: 1,
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+
+	type P struct {
+		S *string  `schema:"s" default:"test1"`
+		I *int     `schema:"i" default:"21"`
+		B *bool    `schema:"b" default:"false"`
+		F *float64 `schema:"f" default:"3.14"`
+		U *uint    `schema:"u" default:"1"`
+	}
+
+	p := P{}
+
+	if err := decoder.Decode(&p, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	vExpected := reflect.ValueOf(expected)
+	vActual := reflect.ValueOf(p)
+
+	i := 0
+
+	for i < vExpected.NumField() {
+		if !reflect.DeepEqual(vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface()) {
+			t.Errorf("Expected %v, got %v", vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface())
+		}
+		i++
+	}
+}
+
+func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
+	type D struct {
+		S string  `schema:"s" default:"test1"`
+		I int     `schema:"i" default:"21"`
+		B bool    `schema:"b" default:"false"`
+		F float64 `schema:"f" default:"3.14"`
+		U uint    `schema:"u" default:"1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		S: "s",
+		I: 1,
+		B: true,
+		F: 0.22,
+		U: 14,
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+}
+
+func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
+
+	type D struct {
+		S string  `schema:"s,required" default:"test1"`
+		I int     `schema:"i,required" default:"21"`
+		B bool    `schema:"b,required" default:"false"`
+		F float64 `schema:"f,required" default:"3.14"`
+		U uint    `schema:"u,required" default:"1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "required fields cannot have a default value"
+
+	if err == nil || err.Error() != expected {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+
+}
+
+func TestDefaultsAreNotSupportedForStructsAndSlices(t *testing.T) {
+
+	type D struct {
+		S S1       `schema:"s" default:"{f1:0}"`
+		A []string `schema:"s" default:"test1,test2"`
+	}
+
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers"
+
+	if err == nil || err.Error() != expected {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+
+}

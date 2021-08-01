@@ -84,9 +84,7 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 			errors[path] = UnknownKeyError{Key: path}
 		}
 	}
-	if err := d.setDefaults(t, v); err != nil {
-		errors.merge(MultiError{"defaults": err})
-	}
+	errors.merge(d.setDefaults(t, v))
 	errors.merge(d.checkRequired(t, src))
 	if len(errors) > 0 {
 		return errors
@@ -94,35 +92,52 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	return nil
 }
 
-func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) error {
+//setDefaults sets the default values when the `default` tag is specified,
+//default is supported on basic/primitive types and their pointers,
+//nested structs can also have default tags
+func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	struc := d.cache.get(t)
 	if struc == nil {
 		// unexpect, cache.get never return nil
-		return errors.New("cache fail")
+		return MultiError{"default-" + t.Name(): errors.New("cache fail")}
 	}
 
-	for i, f := range struc.fields {
+	errs := MultiError{}
+
+	for _, f := range struc.fields {
+		vCurrent := v.FieldByName(f.name)
+
+		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
+			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))
+		} else if isPointerToStruct(vCurrent) && f.defaultValue == "" {
+			errs.merge(d.setDefaults(vCurrent.Elem().Type(), vCurrent.Elem()))
+		}
+
 		if f.defaultValue != "" && f.isRequired {
-			return errors.New("required fields cannot have a default value")
-		} else if f.defaultValue != "" && v.Field(i).IsZero() && !f.isRequired {
+			errs.merge(MultiError{"default-" + f.name: errors.New("required fields cannot have a default value")})
+		} else if f.defaultValue != "" && vCurrent.IsZero() && !f.isRequired {
 			if f.typ.Kind() == reflect.Struct || f.typ.Kind() == reflect.Slice {
-				return errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")
+				errs.merge(MultiError{"default-" + f.name: errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
 			} else if f.typ.Kind() == reflect.Ptr {
 				t1 := f.typ.Elem()
 
 				if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
-					return errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")
+					errs.merge(MultiError{"default-" + f.name: errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
 				}
 
-				v.Field(i).Set(convertPointer(t1.Kind(), f.defaultValue))
+				vCurrent.Set(convertPointer(t1.Kind(), f.defaultValue))
 			} else {
-				v.Field(i).Set(builtinConverters[f.typ.Kind()](f.defaultValue))
+				vCurrent.Set(builtinConverters[f.typ.Kind()](f.defaultValue))
 			}
 
 		}
 	}
 
-	return nil
+	return errs
+}
+
+func isPointerToStruct(v reflect.Value) bool {
+	return !v.IsZero() && v.Type().Kind() == reflect.Ptr && v.Elem().Type().Kind() == reflect.Struct
 }
 
 // checkRequired checks whether required fields are empty

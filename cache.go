@@ -152,7 +152,7 @@ func (c *cache) create(t reflect.Type, parentAlias string) *structInfo {
 
 // createField creates a fieldInfo for the given field.
 func (c *cache) createField(field reflect.StructField, parentAlias string) *fieldInfo {
-	alias, options := fieldAlias(field, c.tag)
+	alias, options, _ := fieldAlias(field, c.tag)
 	if alias == "-" {
 		// Ignore this field.
 		return nil
@@ -273,14 +273,15 @@ func indirectType(typ reflect.Type) reflect.Type {
 }
 
 // fieldAlias parses a field tag to get a field alias.
-func fieldAlias(field reflect.StructField, tagName string) (alias string, options tagOptions) {
+func fieldAlias(field reflect.StructField, tagName string) (alias string, options tagOptions, tagMatched bool) {
 	if tag := field.Tag.Get(tagName); tag != "" {
 		alias, options = parseTag(tag)
+		tagMatched = true
 	}
 	if alias == "" {
 		alias = field.Name
 	}
-	return alias, options
+	return alias, options, tagMatched
 }
 
 // tagOptions is the string following a comma in a struct field's tag, or

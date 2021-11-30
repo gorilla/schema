@@ -11,8 +11,9 @@ type encoderFunc func(reflect.Value) string
 
 // Encoder encodes values from a struct into url.Values.
 type Encoder struct {
-	cache  *cache
-	regenc map[reflect.Type]encoderFunc
+	cache              *cache
+	regenc             map[reflect.Type]encoderFunc
+	ignoreUnmatchedTag bool
 }
 
 // NewEncoder returns a new Encoder with defaults.
@@ -38,6 +39,16 @@ func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value)
 // The default tag is "schema".
 func (e *Encoder) SetAliasTag(tag string) {
 	e.cache.tag = tag
+}
+
+// IgnoreUnmatchedTag controls the behaviour when the encoder encounters unmatched
+// tag in the struct.
+// If i is true and an unmatched tag is encountered, it is ignored.
+// If i is false then encoder will use field name.
+//
+// To preserve backwards compatibility, the default value is false.
+func (e *Encoder) IgnoreUnmatchedTag(i bool) {
+	e.ignoreUnmatchedTag = i
 }
 
 // isValidStructPointer test if input value is a valid struct pointer.
@@ -87,8 +98,12 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		name, opts, tagMatched := fieldAlias(t.Field(i), e.cache.tag)
 		if name == "-" {
+			continue
+		}
+
+		if e.ignoreUnmatchedTag && !tagMatched {
 			continue
 		}
 

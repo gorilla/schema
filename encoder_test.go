@@ -511,3 +511,30 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
 }
+
+func TestEncoderIgnoreUnmatchedTag(t *testing.T) {
+	type S1 struct {
+		SomeJSON  string `json:"some_json"`
+		SomeQuery string `query:"some_query"`
+		SomeEmpty string
+	}
+
+	data := map[string][]string{}
+
+	s := S1{
+		SomeJSON:  "some-json",
+		SomeQuery: "some-query",
+		SomeEmpty: "some-empty",
+	}
+
+	encoder := NewEncoder()
+	encoder.SetAliasTag("json")
+	encoder.IgnoreUnmatchedTag(true)
+
+	err := encoder.Encode(&s, data)
+
+	noError(t, err)
+	valExists(t, "some_json", "some-json", data)
+	valNotExists(t, "SomeQuery", data)
+	valNotExists(t, "SomeEmpty", data)
+}

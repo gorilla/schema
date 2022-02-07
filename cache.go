@@ -188,6 +188,8 @@ func (c *cache) createField(field reflect.StructField, parentAlias string) *fiel
 		}
 	}
 
+	_, hasTag := field.Tag.Lookup(c.tag)
+
 	return &fieldInfo{
 		typ:              field.Type,
 		name:             field.Name,
@@ -197,6 +199,7 @@ func (c *cache) createField(field reflect.StructField, parentAlias string) *fiel
 		isSliceOfStructs: isSlice && isStruct,
 		isAnonymous:      field.Anonymous,
 		isRequired:       options.Contains("required"),
+		hasTag:           hasTag,
 	}
 }
 
@@ -213,7 +216,8 @@ type structInfo struct {
 
 func (i *structInfo) get(alias string) *fieldInfo {
 	for _, field := range i.fields {
-		if strings.EqualFold(field.alias, alias) {
+		if !field.hasTag && strings.EqualFold(field.alias, alias) ||
+			field.hasTag && field.alias == alias {
 			return field
 		}
 	}
@@ -248,6 +252,7 @@ type fieldInfo struct {
 	// isAnonymous indicates whether the field is embedded in the struct.
 	isAnonymous bool
 	isRequired  bool
+	hasTag      bool
 }
 
 func (f *fieldInfo) paths(prefix string) []string {

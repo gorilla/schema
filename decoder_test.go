@@ -2024,3 +2024,27 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
 }
+
+func TestCaseSensitive(t *testing.T) {
+	data := map[string][]string{
+		"x": {"a"},
+		"X": {"b"},
+	}
+
+	decoder := NewDecoder()
+
+	var cnt int
+	for i := 0; i < 1000; i++ {
+		var v struct {
+			X string `schema:"x"`
+		}
+		_ = decoder.Decode(&v, data)
+		if v.X != "a" {
+			cnt++
+		}
+	}
+
+	if cnt > 0 {
+		t.Errorf("Expected %v errors, got %v", 0, cnt)
+	}
+}

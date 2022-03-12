@@ -2058,20 +2058,18 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 
 func TestDefaultValuesAreSet(t *testing.T) {
 
-	//TODO: Test nesting and update repos
-
 	type N struct {
-		S1 string `schema:"s1" default:"test1"`
-		I2 int    `schema:"i2" default:"22"`
+		S1 string `schema:"s1,default:test1"`
+		I2 int    `schema:"i2,default:22"`
 	}
 
 	type D struct {
 		N
-		S string  `schema:"s" default:"test1"`
-		I int     `schema:"i" default:"21"`
-		B bool    `schema:"b" default:"false"`
-		F float64 `schema:"f" default:"3.14"`
-		U uint    `schema:"u" default:"1"`
+		S string  `schema:"s,default:test1"`
+		I int     `schema:"i,default:21"`
+		B bool    `schema:"b,default:false"`
+		F float64 `schema:"f,default:3.14"`
+		U uint    `schema:"u,default:1"`
 	}
 
 	data := map[string][]string{}
@@ -2102,11 +2100,11 @@ func TestDefaultValuesAreSet(t *testing.T) {
 
 	type P struct {
 		*N
-		S *string  `schema:"s" default:"test1"`
-		I *int     `schema:"i" default:"21"`
-		B *bool    `schema:"b" default:"false"`
-		F *float64 `schema:"f" default:"3.14"`
-		U *uint    `schema:"u" default:"1"`
+		S *string  `schema:"s,default:test1"`
+		I *int     `schema:"i,default:21"`
+		B *bool    `schema:"b,default:false"`
+		F *float64 `schema:"f,default:3.14"`
+		U *uint    `schema:"u,default:1"`
 	}
 
 	p := P{N: &N{}}
@@ -2130,11 +2128,11 @@ func TestDefaultValuesAreSet(t *testing.T) {
 
 func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
 	type D struct {
-		S string  `schema:"s" default:"test1"`
-		I int     `schema:"i" default:"21"`
-		B bool    `schema:"b" default:"false"`
-		F float64 `schema:"f" default:"3.14"`
-		U uint    `schema:"u" default:"1"`
+		S string  `schema:"s,default:test1"`
+		I int     `schema:"i,default:21"`
+		B bool    `schema:"b,default:false"`
+		F float64 `schema:"f,default:3.14"`
+		U uint    `schema:"u,default:1"`
 	}
 
 	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
@@ -2163,11 +2161,11 @@ func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
 func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 	type D struct {
-		S string  `schema:"s,required" default:"test1"`
-		I int     `schema:"i,required" default:"21"`
-		B bool    `schema:"b,required" default:"false"`
-		F float64 `schema:"f,required" default:"3.14"`
-		U uint    `schema:"u,required" default:"1"`
+		S string  `schema:"s,required,default:test1"`
+		I int     `schema:"i,required,default:21"`
+		B bool    `schema:"b,required,default:false"`
+		F float64 `schema:"f,required,default:3.14"`
+		U uint    `schema:"u,required,default:1"`
 	}
 
 	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
@@ -2189,8 +2187,8 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 func TestDefaultsAreNotSupportedForStructsAndSlices(t *testing.T) {
 
 	type D struct {
-		S S1       `schema:"s" default:"{f1:0}"`
-		A []string `schema:"s" default:"test1,test2"`
+		S S1       `schema:"s,default:{f1:0}"`
+		A []string `schema:"s,default:test1,test2"`
 	}
 
 	d := D{}
@@ -2201,10 +2199,9 @@ func TestDefaultsAreNotSupportedForStructsAndSlices(t *testing.T) {
 
 	err := decoder.Decode(&d, data)
 
-	expected := "default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers"
+	expected := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers"
 
 	if err == nil || !strings.Contains(err.Error(), expected) {
 		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
 	}
-
 }

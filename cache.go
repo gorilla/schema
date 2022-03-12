@@ -17,21 +17,19 @@ var errInvalidPath = errors.New("schema: invalid path")
 // newCache returns a new cache.
 func newCache() *cache {
 	c := cache{
-		m:          make(map[reflect.Type]*structInfo),
-		regconv:    make(map[reflect.Type]Converter),
-		tag:        "schema",
-		defaultTag: "default",
+		m:       make(map[reflect.Type]*structInfo),
+		regconv: make(map[reflect.Type]Converter),
+		tag:     "schema",
 	}
 	return &c
 }
 
 // cache caches meta-data about a struct.
 type cache struct {
-	l          sync.RWMutex
-	m          map[reflect.Type]*structInfo
-	regconv    map[reflect.Type]Converter
-	tag        string
-	defaultTag string
+	l       sync.RWMutex
+	m       map[reflect.Type]*structInfo
+	regconv map[reflect.Type]Converter
+	tag     string
 }
 
 // registerConverter registers a converter function for a custom type.
@@ -199,7 +197,7 @@ func (c *cache) createField(field reflect.StructField, parentAlias string) *fiel
 		isSliceOfStructs: isSlice && isStruct,
 		isAnonymous:      field.Anonymous,
 		isRequired:       options.Contains("required"),
-		defaultValue:     field.Tag.Get(c.defaultTag),
+		defaultValue:     options.getDefaultOptionValue(),
 	}
 }
 
@@ -306,4 +304,17 @@ func (o tagOptions) Contains(option string) bool {
 		}
 	}
 	return false
+}
+
+func (o tagOptions) getDefaultOptionValue() string {
+	for _, s := range o {
+		if strings.HasPrefix(s, "default:") {
+			if t := strings.Split(s, ":"); len(t) > 0 {
+				return t[1]
+			}
+			break
+		}
+	}
+
+	return ""
 }

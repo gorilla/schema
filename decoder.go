@@ -117,12 +117,12 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 			errs.merge(MultiError{"default-" + f.name: errors.New("required fields cannot have a default value")})
 		} else if f.defaultValue != "" && vCurrent.IsZero() && !f.isRequired {
 			if f.typ.Kind() == reflect.Struct || f.typ.Kind() == reflect.Slice {
-				errs.merge(MultiError{"default-" + f.name: errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
+				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
 			} else if f.typ.Kind() == reflect.Ptr {
 				t1 := f.typ.Elem()
 
 				if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
-					errs.merge(MultiError{"default-" + f.name: errors.New("default tag is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
+					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
 				}
 
 				vCurrent.Set(convertPointer(t1.Kind(), f.defaultValue))

@@ -2059,17 +2059,19 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 func TestDefaultValuesAreSet(t *testing.T) {
 
 	type N struct {
-		S1 string `schema:"s1,default:test1"`
-		I2 int    `schema:"i2,default:22"`
+		S1 string    `schema:"s1,default:test1"`
+		I2 int       `schema:"i2,default:22"`
+		R2 []float64 `schema:"r2,default:2|3.5|11.01"`
 	}
 
 	type D struct {
 		N
-		S string  `schema:"s,default:test1"`
-		I int     `schema:"i,default:21"`
-		B bool    `schema:"b,default:false"`
-		F float64 `schema:"f,default:3.14"`
-		U uint    `schema:"u,default:1"`
+		S string   `schema:"s,default:test1"`
+		I int      `schema:"i,default:21"`
+		B bool     `schema:"b,default:false"`
+		F float64  `schema:"f,default:3.14"`
+		U uint     `schema:"u,default:1"`
+		X []string `schema:"x,default:x1|x2"`
 	}
 
 	data := map[string][]string{}
@@ -2086,12 +2088,14 @@ func TestDefaultValuesAreSet(t *testing.T) {
 		N: N{
 			S1: "test1",
 			I2: 22,
+			R2: []float64{2, 3.5, 11.01},
 		},
 		S: "test1",
 		I: 21,
 		B: false,
 		F: 3.14,
 		U: 1,
+		X: []string{"x1", "x2"},
 	}
 
 	if !reflect.DeepEqual(expected, d) {
@@ -2105,6 +2109,7 @@ func TestDefaultValuesAreSet(t *testing.T) {
 		B *bool    `schema:"b,default:false"`
 		F *float64 `schema:"f,default:3.14"`
 		U *uint    `schema:"u,default:1"`
+		X []string `schema:"x,default:x1|x2"`
 	}
 
 	p := P{N: &N{}}
@@ -2184,11 +2189,44 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 }
 
-func TestDefaultsAreNotSupportedForStructsAndSlices(t *testing.T) {
+func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 
 	type D struct {
-		S S1       `schema:"s,default:{f1:0}"`
-		A []string `schema:"s,default:test1,test2"`
+		A []int    `schema:"a,default:wrong1|wrong2"`
+		B bool     `schema:"b,default:invalid"`
+		C *float32 `schema:"c,default:notAFloat"`
+		D uint8    `schema:"d,default:8000000"`
+	}
+
+	d := D{}
+
+	expected := D{A: []int{}}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err != nil {
+		t.Errorf("decoding should succeed but got error: %q", err)
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("expected %v but got %v", expected, d)
+	}
+}
+
+func TestDefaultsAreNotSupportedForStructsAndStructSlices(t *testing.T) {
+
+	type C struct {
+		C string `schema:"c"`
+	}
+
+	type D struct {
+		S S1     `schema:"s,default:{f1:0}"`
+		A []C    `schema:"a,default:{c:test1}|{c:test2}"`
+		B []*int `schema:"b,default:12"`
 	}
 
 	d := D{}
@@ -2199,7 +2237,7 @@ func TestDefaultsAreNotSupportedForStructsAndSlices(t *testing.T) {
 
 	err := decoder.Decode(&d, data)
 
-	expected := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers"
+	expected := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices"
 
 	if err == nil || !strings.Contains(err.Error(), expected) {
 		t.Errorf("decoding should fail with error msg %s got %q", expected, err)

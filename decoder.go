@@ -116,20 +116,42 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 		if f.defaultValue != "" && f.isRequired {
 			errs.merge(MultiError{"default-" + f.name: errors.New("required fields cannot have a default value")})
 		} else if f.defaultValue != "" && vCurrent.IsZero() && !f.isRequired {
-			if f.typ.Kind() == reflect.Struct || f.typ.Kind() == reflect.Slice {
-				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
+			if f.typ.Kind() == reflect.Struct {
+				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
+			} else if f.typ.Kind() == reflect.Slice {
+				vals := strings.Split(f.defaultValue, "|")
+
+				//check if slice has one of the supported types for defaults
+				if _, ok := builtinConverters[f.typ.Elem().Kind()]; !ok {
+					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
+					continue
+				}
+
+				defaultSlice := reflect.MakeSlice(f.typ, 0, cap(vals))
+				for _, val := range vals {
+					//this check is to handle if the wrong value is provided
+					if convertedVal := builtinConverters[f.typ.Elem().Kind()](val); convertedVal.IsValid() {
+						defaultSlice = reflect.Append(defaultSlice, convertedVal)
+					}
+				}
+				vCurrent.Set(defaultSlice)
 			} else if f.typ.Kind() == reflect.Ptr {
 				t1 := f.typ.Elem()
 
 				if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
-					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers")})
+					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
 				}
 
-				vCurrent.Set(convertPointer(t1.Kind(), f.defaultValue))
+				//this check is to handle if the wrong value is provided
+				if convertedVal := convertPointer(t1.Kind(), f.defaultValue); convertedVal.IsValid() {
+					vCurrent.Set(convertedVal)
+				}
 			} else {
-				vCurrent.Set(builtinConverters[f.typ.Kind()](f.defaultValue))
+				//this check is to handle if the wrong value is provided
+				if convertedVal := builtinConverters[f.typ.Kind()](f.defaultValue); convertedVal.IsValid() {
+					vCurrent.Set(builtinConverters[f.typ.Kind()](f.defaultValue))
+				}
 			}
-
 		}
 	}
 

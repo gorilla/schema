@@ -408,6 +408,22 @@ func TestStructPointer(t *testing.T) {
 	valNotExists(t, "F03", vals)
 }
 
+type E7 struct {
+	F01 *complex128
+}
+
+func TestUnsupportedKindPointer(t *testing.T) {
+	vals := map[string][]string{}
+	f01 := complex(1, 2)
+	s := E7{
+		F01: &f01,
+	}
+
+	encoder := NewEncoder()
+	encoder.Encode(&s, vals)
+	valNotExists(t, "F01", vals)
+}
+
 func TestRegisterEncoderCustomArrayType(t *testing.T) {
 	type CustomInt []int
 	type S1 struct {

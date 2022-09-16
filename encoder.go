@@ -165,6 +165,9 @@ func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {
 		return encodeFloat64
 	case reflect.Ptr:
 		f := typeEncoder(t.Elem(), reg)
+		if f == nil {
+			return nil
+		}
 		return func(v reflect.Value) string {
 			if v.IsNil() {
 				return "null"

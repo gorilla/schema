@@ -69,9 +69,7 @@ func (id *S19) UnmarshalText(text []byte) error {
 	if len(buf) > len(*id) {
 		return errors.New("out of range")
 	}
-	for i := range buf {
-		(*id)[i] = buf[i]
-	}
+	copy((*id)[:], buf)
 	return nil
 }
 

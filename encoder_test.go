@@ -205,7 +205,7 @@ func TestCompatSlices(t *testing.T) {
 		t.Errorf("Dncoder has non-nil error: %v", err)
 	}
 
-	if len(src.Ints) != len(dst.Ints) || len(src.Ones) != len(src.Ones) {
+	if len(src.Ints) != len(dst.Ints) || len(src.Ones) != len(dst.Ones) {
 		t.Fatalf("Expected %v, got %v", src, dst)
 	}
 
@@ -344,7 +344,10 @@ func TestEncoderSetAliasTag(t *testing.T) {
 	}
 	encoder := NewEncoder()
 	encoder.SetAliasTag("json")
-	encoder.Encode(&s, data)
+	err := encoder.Encode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to encode: %v", err)
+	}
 	valExists(t, "id", "foo", data)
 }
 
@@ -376,7 +379,10 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	}
 
 	encoder := NewEncoder()
-	encoder.Encode(&s, vals)
+	err := encoder.Encode(&s, vals)
+	if err != nil {
+		t.Fatalf("Failed to encode: %v", err)
+	}
 
 	valNotExists(t, "f01", vals)
 	valExists(t, "f02", "test", vals)
@@ -402,7 +408,10 @@ func TestStructPointer(t *testing.T) {
 	}
 
 	encoder := NewEncoder()
-	encoder.Encode(&s, vals)
+	err := encoder.Encode(&s, vals)
+	if err != nil {
+		t.Fatalf("Failed to encode: %v", err)
+	}
 	valExists(t, "F12", "2", vals)
 	valExists(t, "F02", "null", vals)
 	valNotExists(t, "F03", vals)
@@ -428,7 +437,10 @@ func TestRegisterEncoderCustomArrayType(t *testing.T) {
 			return fmt.Sprint(value.Interface())
 		})
 
-		encoder.Encode(s, vals)
+		err := encoder.Encode(ss[s], vals)
+		if err != nil {
+			t.Fatalf("Failed to encode: %v", err)
+		}
 	}
 }
 
@@ -466,7 +478,7 @@ func TestRegisterEncoderStructIsZero(t *testing.T) {
 			t.Error("expected tim1 to be present")
 		}
 
-		if "2020-08-04T13:30:01Z" != ta[0] {
+		if ta[0] != "2020-08-04T13:30:01Z" {
 			t.Error("expected correct tim1 time")
 		}
 

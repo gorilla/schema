@@ -69,9 +69,7 @@ func (id *S19) UnmarshalText(text []byte) error {
 	if len(buf) > len(*id) {
 		return errors.New("out of range")
 	}
-	for i := range buf {
-		(*id)[i] = buf[i]
-	}
+	copy((*id)[:], buf)
 	return nil
 }
 
@@ -673,7 +671,10 @@ func TestEmptyValue(t *testing.T) {
 		"F01": {"", "foo"},
 	}
 	s := &S5{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.F01) != 1 {
 		t.Errorf("Expected 1 values in F01")
 	}
@@ -706,7 +707,10 @@ func TestUnexportedField(t *testing.T) {
 		"id": {"identifier"},
 	}
 	s := &S6{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.id != "" {
 		t.Errorf("Unexported field expected to be ignored")
 	}
@@ -724,7 +728,10 @@ func TestMultipleValues(t *testing.T) {
 	}
 
 	s := S7{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.ID != "1" {
 		t.Errorf("Last defined value must be used when multiple values for same field are provided")
 	}
@@ -742,7 +749,10 @@ func TestSetAliasTag(t *testing.T) {
 	s := S8{}
 	dec := NewDecoder()
 	dec.SetAliasTag("json")
-	dec.Decode(&s, data)
+	err := dec.Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.ID != "foo" {
 		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
 	}
@@ -813,7 +823,10 @@ func TestEmbeddedField(t *testing.T) {
 		"Id": {"identifier"},
 	}
 	s := &S10{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.Id != "identifier" {
 		t.Errorf("Missing support for embedded fields")
 	}
@@ -1148,7 +1161,10 @@ func TestCSVSlice(t *testing.T) {
 	}
 
 	s := S12A{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.ID) != 2 {
 		t.Errorf("Expected two values in the result list, got %+v", s.ID)
 	}
@@ -1161,14 +1177,17 @@ type S12B struct {
 	ID []string
 }
 
-//Decode should not split on , into a slice for string only
+// Decode should not split on , into a slice for string only
 func TestCSVStringSlice(t *testing.T) {
 	data := map[string][]string{
 		"ID": {"0,1"},
 	}
 
 	s := S12B{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.ID) != 1 {
 		t.Errorf("Expected one value in the result list, got %+v", s.ID)
 	}
@@ -1177,7 +1196,7 @@ func TestCSVStringSlice(t *testing.T) {
 	}
 }
 
-//Invalid data provided by client should not panic (github issue 33)
+// Invalid data provided by client should not panic (github issue 33)
 func TestInvalidDataProvidedByClient(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1186,7 +1205,7 @@ func TestInvalidDataProvidedByClient(t *testing.T) {
 	}()
 
 	type S struct {
-		f string
+		f string // nolint:unused
 	}
 
 	data := map[string][]string{
@@ -1202,7 +1221,7 @@ func TestInvalidDataProvidedByClient(t *testing.T) {
 // underlying cause of error in issue 33
 func TestInvalidPathInCacheParsePath(t *testing.T) {
 	type S struct {
-		f string
+		f string // nolint:unused
 	}
 
 	typ := reflect.ValueOf(new(S)).Elem().Type()
@@ -1218,7 +1237,10 @@ func TestDecodeToTypedField(t *testing.T) {
 	type Aa bool
 	s1 := &struct{ Aa }{}
 	v1 := map[string][]string{"Aa": {"true"}}
-	NewDecoder().Decode(s1, v1)
+	err := NewDecoder().Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s1.Aa != Aa(true) {
 		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
 	}
@@ -1238,7 +1260,10 @@ func TestRegisterConverter(t *testing.T) {
 	decoder.RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
 
 	v1 := map[string][]string{"Aa": {"4"}, "Bb": {"5"}}
-	decoder.Decode(s1, v1)
+	err := decoder.Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 
 	if s1.Aa != Aa(1) {
 		t.Errorf("s1.Aa: expected %v, got %v", 1, s1.Aa)
@@ -1260,9 +1285,12 @@ func TestRegisterConverterSlice(t *testing.T) {
 	}{}
 
 	expected := []string{"one", "two", "three"}
-	decoder.Decode(&result, map[string][]string{
+	err := decoder.Decode(&result, map[string][]string{
 		"multiple": []string{"one,two,three"},
 	})
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	for i := range expected {
 		if got, want := expected[i], result.Multiple[i]; got != want {
 			t.Errorf("%d: got %s, want %s", i, got, want)
@@ -1868,8 +1896,11 @@ func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
 	ts := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	decoder.RegisterConverter(s1.MyTime, func(s string) reflect.Value { return reflect.ValueOf(ts) })
 
-	v1 := map[string][]string{"MyTime": {"4"}, "Bb": {"5"}}
-	decoder.Decode(s1, v1)
+	v1 := map[string][]string{"MyTime": {"4"}}
+	err := decoder.Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 
 	if s1.MyTime != MyTime(ts) {
 		t.Errorf("s1.Aa: expected %v, got %v", ts, s1.MyTime)
@@ -1951,7 +1982,7 @@ func TestTextUnmarshalerTypeSliceOfStructs(t *testing.T) {
 	sb := struct {
 		Value S21B
 	}{}
-	if err := decoder.Decode(&sb, data); err == invalidPath {
+	if err := decoder.Decode(&sb, data); err == errInvalidPath {
 		t.Fatal("Expecting invalid path error", err)
 	}
 }

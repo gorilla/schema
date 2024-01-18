@@ -2055,3 +2055,18 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
 }
+
+func TestNewDecoderWithOptions(t *testing.T) {
+	defaultEncoder := NewDecoder()
+	ignoreUnknownKeys := !defaultEncoder.ignoreUnknownKeys
+
+	decoder := NewDecoder(func(d *Decoder) {
+		d.IgnoreUnknownKeys(ignoreUnknownKeys)
+	})
+
+	if decoder.ignoreUnknownKeys != ignoreUnknownKeys {
+		t.Errorf("Expected ignoreUnknownKeys to be %t, got %t",
+			ignoreUnknownKeys,
+			decoder.ignoreUnknownKeys)
+	}
+}

@@ -13,8 +13,12 @@ import (
 )
 
 // NewDecoder returns a new Decoder.
-func NewDecoder() *Decoder {
-	return &Decoder{cache: newCache()}
+func NewDecoder(options ...func(d *Decoder)) *Decoder {
+	d := &Decoder{cache: newCache()}
+	for _, opt := range options {
+		opt(d)
+	}
+	return d
 }
 
 // Decoder decodes values from a map[string][]string to a struct.

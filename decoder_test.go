@@ -2057,7 +2057,6 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 }
 
 func TestDefaultValuesAreSet(t *testing.T) {
-
 	type N struct {
 		S1 string    `schema:"s1,default:test1"`
 		I2 int       `schema:"i2,default:22"`
@@ -2068,9 +2067,18 @@ func TestDefaultValuesAreSet(t *testing.T) {
 		N
 		S string   `schema:"s,default:test1"`
 		I int      `schema:"i,default:21"`
+		J int8     `schema:"j,default:2"`
+		K int16    `schema:"k,default:-455"`
+		L int32    `schema:"l,default:899"`
+		M int64    `schema:"m,default:12455"`
 		B bool     `schema:"b,default:false"`
 		F float64  `schema:"f,default:3.14"`
+		G float32  `schema:"g,default:19.12"`
 		U uint     `schema:"u,default:1"`
+		V uint8    `schema:"v,default:190"`
+		W uint16   `schema:"w,default:20000"`
+		Y uint32   `schema:"y,default:156666666"`
+		Z uint64   `schema:"z,default:1545465465465546"`
 		X []string `schema:"x,default:x1|x2"`
 	}
 
@@ -2092,9 +2100,18 @@ func TestDefaultValuesAreSet(t *testing.T) {
 		},
 		S: "test1",
 		I: 21,
+		J: 2,
+		K: -455,
+		L: 899,
+		M: 12455,
 		B: false,
 		F: 3.14,
+		G: 19.12,
 		U: 1,
+		V: 190,
+		W: 20000,
+		Y: 156666666,
+		Z: 1545465465465546,
 		X: []string{"x1", "x2"},
 	}
 
@@ -2106,9 +2123,18 @@ func TestDefaultValuesAreSet(t *testing.T) {
 		*N
 		S *string  `schema:"s,default:test1"`
 		I *int     `schema:"i,default:21"`
+		J *int8    `schema:"j,default:2"`
+		K *int16   `schema:"k,default:-455"`
+		L *int32   `schema:"l,default:899"`
+		M *int64   `schema:"m,default:12455"`
 		B *bool    `schema:"b,default:false"`
 		F *float64 `schema:"f,default:3.14"`
+		G *float32 `schema:"g,default:19.12"`
 		U *uint    `schema:"u,default:1"`
+		V *uint8   `schema:"v,default:190"`
+		W *uint16  `schema:"w,default:20000"`
+		Y *uint32  `schema:"y,default:156666666"`
+		Z *uint64  `schema:"z,default:1545465465465546"`
 		X []string `schema:"x,default:x1|x2"`
 	}
 
@@ -2164,7 +2190,6 @@ func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
 }
 
 func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
-
 	type D struct {
 		S string  `schema:"s,required,default:test1"`
 		I int     `schema:"i,required,default:21"`
@@ -2190,12 +2215,38 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 }
 
 func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
-
 	type D struct {
 		A []int    `schema:"a,default:wrong1|wrong2"`
 		B bool     `schema:"b,default:invalid"`
 		C *float32 `schema:"c,default:notAFloat"`
-		D uint8    `schema:"d,default:8000000"`
+		//uint types
+		D uint   `schema:"d,default:notUint"`
+		E uint8  `schema:"e,default:notUint"`
+		F uint16 `schema:"f,default:notUint"`
+		G uint32 `schema:"g,default:notUint"`
+		H uint64 `schema:"h,default:notUint"`
+		// uint types pointers
+		I *uint   `schema:"i,default:notUint"`
+		J *uint8  `schema:"j,default:notUint"`
+		K *uint16 `schema:"k,default:notUint"`
+		L *uint32 `schema:"l,default:notUint"`
+		M *uint64 `schema:"m,default:notUint"`
+		// int types
+		N int   `schema:"n,default:notInt"`
+		O int8  `schema:"o,default:notInt"`
+		P int16 `schema:"p,default:notInt"`
+		Q int32 `schema:"q,default:notInt"`
+		R int64 `schema:"r,default:notInt"`
+		// int types pointers
+		S *int   `schema:"s,default:notInt"`
+		T *int8  `schema:"t,default:notInt"`
+		U *int16 `schema:"u,default:notInt"`
+		V *int32 `schema:"v,default:notInt"`
+		W *int64 `schema:"w,default:notInt"`
+		// float
+		X float32  `schema:"c,default:notAFloat"`
+		Y float64  `schema:"c,default:notAFloat"`
+		Z *float64 `schema:"c,default:notAFloat"`
 	}
 
 	d := D{}
@@ -2218,7 +2269,6 @@ func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 }
 
 func TestDefaultsAreNotSupportedForStructsAndStructSlices(t *testing.T) {
-
 	type C struct {
 		C string `schema:"c"`
 	}
@@ -2227,6 +2277,7 @@ func TestDefaultsAreNotSupportedForStructsAndStructSlices(t *testing.T) {
 		S S1     `schema:"s,default:{f1:0}"`
 		A []C    `schema:"a,default:{c:test1}|{c:test2}"`
 		B []*int `schema:"b,default:12"`
+		E *C     `schema:"e,default:{c:test3}"`
 	}
 
 	d := D{}

@@ -2055,3 +2055,242 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
 }
+
+func TestDefaultValuesAreSet(t *testing.T) {
+	type N struct {
+		S1 string    `schema:"s1,default:test1"`
+		I2 int       `schema:"i2,default:22"`
+		R2 []float64 `schema:"r2,default:2|3.5|11.01"`
+	}
+
+	type D struct {
+		N
+		S string   `schema:"s,default:test1"`
+		I int      `schema:"i,default:21"`
+		J int8     `schema:"j,default:2"`
+		K int16    `schema:"k,default:-455"`
+		L int32    `schema:"l,default:899"`
+		M int64    `schema:"m,default:12455"`
+		B bool     `schema:"b,default:false"`
+		F float64  `schema:"f,default:3.14"`
+		G float32  `schema:"g,default:19.12"`
+		U uint     `schema:"u,default:1"`
+		V uint8    `schema:"v,default:190"`
+		W uint16   `schema:"w,default:20000"`
+		Y uint32   `schema:"y,default:156666666"`
+		Z uint64   `schema:"z,default:1545465465465546"`
+		X []string `schema:"x,default:x1|x2"`
+	}
+
+	data := map[string][]string{}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		N: N{
+			S1: "test1",
+			I2: 22,
+			R2: []float64{2, 3.5, 11.01},
+		},
+		S: "test1",
+		I: 21,
+		J: 2,
+		K: -455,
+		L: 899,
+		M: 12455,
+		B: false,
+		F: 3.14,
+		G: 19.12,
+		U: 1,
+		V: 190,
+		W: 20000,
+		Y: 156666666,
+		Z: 1545465465465546,
+		X: []string{"x1", "x2"},
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+
+	type P struct {
+		*N
+		S *string  `schema:"s,default:test1"`
+		I *int     `schema:"i,default:21"`
+		J *int8    `schema:"j,default:2"`
+		K *int16   `schema:"k,default:-455"`
+		L *int32   `schema:"l,default:899"`
+		M *int64   `schema:"m,default:12455"`
+		B *bool    `schema:"b,default:false"`
+		F *float64 `schema:"f,default:3.14"`
+		G *float32 `schema:"g,default:19.12"`
+		U *uint    `schema:"u,default:1"`
+		V *uint8   `schema:"v,default:190"`
+		W *uint16  `schema:"w,default:20000"`
+		Y *uint32  `schema:"y,default:156666666"`
+		Z *uint64  `schema:"z,default:1545465465465546"`
+		X []string `schema:"x,default:x1|x2"`
+	}
+
+	p := P{N: &N{}}
+
+	if err := decoder.Decode(&p, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	vExpected := reflect.ValueOf(expected)
+	vActual := reflect.ValueOf(p)
+
+	i := 0
+
+	for i < vExpected.NumField() {
+		if !reflect.DeepEqual(vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface()) {
+			t.Errorf("Expected %v, got %v", vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface())
+		}
+		i++
+	}
+}
+
+func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
+	type D struct {
+		S string  `schema:"s,default:test1"`
+		I int     `schema:"i,default:21"`
+		B bool    `schema:"b,default:false"`
+		F float64 `schema:"f,default:3.14"`
+		U uint    `schema:"u,default:1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		S: "s",
+		I: 1,
+		B: true,
+		F: 0.22,
+		U: 14,
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+}
+
+func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
+	type D struct {
+		S string  `schema:"s,required,default:test1"`
+		I int     `schema:"i,required,default:21"`
+		B bool    `schema:"b,required,default:false"`
+		F float64 `schema:"f,required,default:3.14"`
+		U uint    `schema:"u,required,default:1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "required fields cannot have a default value"
+
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+
+}
+
+func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
+	type D struct {
+		A []int    `schema:"a,default:wrong1|wrong2"`
+		B bool     `schema:"b,default:invalid"`
+		C *float32 `schema:"c,default:notAFloat"`
+		//uint types
+		D uint   `schema:"d,default:notUint"`
+		E uint8  `schema:"e,default:notUint"`
+		F uint16 `schema:"f,default:notUint"`
+		G uint32 `schema:"g,default:notUint"`
+		H uint64 `schema:"h,default:notUint"`
+		// uint types pointers
+		I *uint   `schema:"i,default:notUint"`
+		J *uint8  `schema:"j,default:notUint"`
+		K *uint16 `schema:"k,default:notUint"`
+		L *uint32 `schema:"l,default:notUint"`
+		M *uint64 `schema:"m,default:notUint"`
+		// int types
+		N int   `schema:"n,default:notInt"`
+		O int8  `schema:"o,default:notInt"`
+		P int16 `schema:"p,default:notInt"`
+		Q int32 `schema:"q,default:notInt"`
+		R int64 `schema:"r,default:notInt"`
+		// int types pointers
+		S *int   `schema:"s,default:notInt"`
+		T *int8  `schema:"t,default:notInt"`
+		U *int16 `schema:"u,default:notInt"`
+		V *int32 `schema:"v,default:notInt"`
+		W *int64 `schema:"w,default:notInt"`
+		// float
+		X float32  `schema:"c,default:notAFloat"`
+		Y float64  `schema:"c,default:notAFloat"`
+		Z *float64 `schema:"c,default:notAFloat"`
+	}
+
+	d := D{}
+
+	expected := D{A: []int{}}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err != nil {
+		t.Errorf("decoding should succeed but got error: %q", err)
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("expected %v but got %v", expected, d)
+	}
+}
+
+func TestDefaultsAreNotSupportedForStructsAndStructSlices(t *testing.T) {
+	type C struct {
+		C string `schema:"c"`
+	}
+
+	type D struct {
+		S S1     `schema:"s,default:{f1:0}"`
+		A []C    `schema:"a,default:{c:test1}|{c:test2}"`
+		B []*int `schema:"b,default:12"`
+		E *C     `schema:"e,default:{c:test3}"`
+	}
+
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices"
+
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+}

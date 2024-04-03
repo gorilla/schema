@@ -105,7 +105,10 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	errs := MultiError{}
 
 	for _, f := range struc.fields {
-		vCurrent := v.FieldByName(f.name)
+		vCurrent, err := v.FieldByIndexErr(f.fieldIndex)
+		if err != nil {
+			continue
+		}
 
 		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
 			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))

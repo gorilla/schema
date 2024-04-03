@@ -117,7 +117,7 @@ func (c *cache) get(t reflect.Type) *structInfo {
 	info := c.m[t]
 	c.l.RUnlock()
 	if info == nil {
-		info = c.create(t, "")
+		info = c.create(t, "", nil)
 		c.l.Lock()
 		c.m[t] = info
 		c.l.Unlock()
@@ -126,14 +126,14 @@ func (c *cache) get(t reflect.Type) *structInfo {
 }
 
 // create creates a structInfo with meta-data about a struct.
-func (c *cache) create(t reflect.Type, parentAlias string) *structInfo {
+func (c *cache) create(t reflect.Type, parentAlias string, fieldIndex []int) *structInfo {
 	info := &structInfo{}
 	var anonymousInfos []*structInfo
 	for i := 0; i < t.NumField(); i++ {
-		if f := c.createField(t.Field(i), parentAlias); f != nil {
+		if f := c.createField(t.Field(i), parentAlias, fieldIndex); f != nil {
 			info.fields = append(info.fields, f)
 			if ft := indirectType(f.typ); ft.Kind() == reflect.Struct && f.isAnonymous {
-				anonymousInfos = append(anonymousInfos, c.create(ft, f.canonicalAlias))
+				anonymousInfos = append(anonymousInfos, c.create(ft, f.canonicalAlias, append(fieldIndex, t.Field(i).Index...)) )
 			}
 		}
 	}
@@ -151,7 +151,7 @@ func (c *cache) create(t reflect.Type, parentAlias string) *structInfo {
 }
 
 // createField creates a fieldInfo for the given field.
-func (c *cache) createField(field reflect.StructField, parentAlias string) *fieldInfo {
+func (c *cache) createField(field reflect.StructField, parentAlias string, parentIndex []int) *fieldInfo {
 	alias, options := fieldAlias(field, c.tag)
 	if alias == "-" {
 		// Ignore this field.
@@ -198,6 +198,7 @@ func (c *cache) createField(field reflect.StructField, parentAlias string) *fiel
 		isAnonymous:      field.Anonymous,
 		isRequired:       options.Contains("required"),
 		defaultValue:     options.getDefaultOptionValue(),
+		fieldIndex:       append(parentIndex, field.Index...),
 	}
 }
 
@@ -250,6 +251,8 @@ type fieldInfo struct {
 	isAnonymous  bool
 	isRequired   bool
 	defaultValue string
+
+	fieldIndex []int
 }
 
 func (f *fieldInfo) paths(prefix string) []string {

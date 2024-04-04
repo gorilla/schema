@@ -92,9 +92,9 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	return nil
 }
 
-//setDefaults sets the default values when the `default` tag is specified,
-//default is supported on basic/primitive types and their pointers,
-//nested structs can also have default tags
+// setDefaults sets the default values when the `default` tag is specified,
+// default is supported on basic/primitive types and their pointers,
+// nested structs can also have default tags
 func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	struc := d.cache.get(t)
 	if struc == nil {
@@ -130,9 +130,12 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 				defaultSlice := reflect.MakeSlice(f.typ, 0, cap(vals))
 				for _, val := range vals {
 					//this check is to handle if the wrong value is provided
-					if convertedVal := builtinConverters[f.typ.Elem().Kind()](val); convertedVal.IsValid() {
-						defaultSlice = reflect.Append(defaultSlice, convertedVal)
+					convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
+					if !convertedVal.IsValid() {
+						errs.merge(MultiError{"default-" + f.name: errors.New("some elements in the slice are of a different type.")})
+						break
 					}
+					defaultSlice = reflect.Append(defaultSlice, convertedVal)
 				}
 				vCurrent.Set(defaultSlice)
 			} else if f.typ.Kind() == reflect.Ptr {

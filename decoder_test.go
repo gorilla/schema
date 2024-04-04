@@ -2214,9 +2214,55 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 }
 
+func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
+	type D struct {
+		A []int      `schema:"a,default:0|wrong1"`
+		B []bool     `schema:"b,default:true|invalid"`
+		C []*float32 `schema:"c,default:1.1|notAFloat"`
+		//uint types
+		D []uint   `schema:"d,default:1|notUint"`
+		E []uint8  `schema:"e,default:2|notUint"`
+		F []uint16 `schema:"f,default:3|notUint"`
+		G []uint32 `schema:"g,default:4|notUint"`
+		H []uint64 `schema:"h,default:5|notUint"`
+		// uint types pointers
+		I []*uint   `schema:"i,default:6|notUint"`
+		J []*uint8  `schema:"j,default:7|notUint"`
+		K []*uint16 `schema:"k,default:8|notUint"`
+		L []*uint32 `schema:"l,default:9|notUint"`
+		M []*uint64 `schema:"m,default:10|notUint"`
+		// int types
+		N []int   `schema:"n,default:11|notInt"`
+		O []int8  `schema:"o,default:12|notInt"`
+		P []int16 `schema:"p,default:13|notInt"`
+		Q []int32 `schema:"q,default:14|notInt"`
+		R []int64 `schema:"r,default:15|notInt"`
+		// int types pointers
+		S []*int   `schema:"s,default:16|notInt"`
+		T []*int8  `schema:"t,default:17|notInt"`
+		U []*int16 `schema:"u,default:18|notInt"`
+		V []*int32 `schema:"v,default:19|notInt"`
+		W []*int64 `schema:"w,default:20|notInt"`
+		// float
+		X []float32  `schema:"c,default:2.2|notAFloat"`
+		Y []float64  `schema:"c,default:3.3|notAFloat"`
+		Z []*float64 `schema:"c,default:4.4|notAFloat"`
+	}
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err == nil {
+		t.Error("if a different type exists, error should be raised.")
+	}
+}
+
 func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 	type D struct {
-		A []int    `schema:"a,default:wrong1|wrong2"`
 		B bool     `schema:"b,default:invalid"`
 		C *float32 `schema:"c,default:notAFloat"`
 		//uint types
@@ -2251,7 +2297,7 @@ func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 
 	d := D{}
 
-	expected := D{A: []int{}}
+	expected := D{}
 
 	data := map[string][]string{}
 

@@ -2216,34 +2216,34 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 	type D struct {
-		A []int      `schema:"a,default:0|wrong1"`
+		A []int      `schema:"a,default:0|won"`
 		B []bool     `schema:"b,default:true|invalid"`
 		C []*float32 `schema:"c,default:1.1|notAFloat"`
-		//uint types
+		// //uint types
 		D []uint   `schema:"d,default:1|notUint"`
 		E []uint8  `schema:"e,default:2|notUint"`
 		F []uint16 `schema:"f,default:3|notUint"`
 		G []uint32 `schema:"g,default:4|notUint"`
 		H []uint64 `schema:"h,default:5|notUint"`
-		// uint types pointers
+		// // uint types pointers
 		I []*uint   `schema:"i,default:6|notUint"`
 		J []*uint8  `schema:"j,default:7|notUint"`
-		K []*uint16 `schema:"k,default:8|notUint"`
-		L []*uint32 `schema:"l,default:9|notUint"`
-		M []*uint64 `schema:"m,default:10|notUint"`
-		// int types
+		K []*uint16 `schema:"k,default:12|notUint"`
+		L []*uint32 `schema:"l,default:129|notUint"`
+		M []*uint64 `schema:"m,default:11111|notUint"`
+		// // int types
 		N []int   `schema:"n,default:11|notInt"`
 		O []int8  `schema:"o,default:12|notInt"`
 		P []int16 `schema:"p,default:13|notInt"`
 		Q []int32 `schema:"q,default:14|notInt"`
 		R []int64 `schema:"r,default:15|notInt"`
-		// int types pointers
-		S []*int   `schema:"s,default:16|notInt"`
-		T []*int8  `schema:"t,default:17|notInt"`
-		U []*int16 `schema:"u,default:18|notInt"`
-		V []*int32 `schema:"v,default:19|notInt"`
-		W []*int64 `schema:"w,default:20|notInt"`
-		// float
+		// // int types pointers
+		S []*int   `schema:"s,default:1000|notInt"`
+		T []*int8  `schema:"t,default:1000|notInt"`
+		U []*int16 `schema:"u,default:1000|notInt"`
+		V []*int32 `schema:"v,default:22222|notInt"`
+		W []*int64 `schema:"w,default:11111|notInt"`
+		// // float
 		X []float32  `schema:"c,default:2.2|notAFloat"`
 		Y []float64  `schema:"c,default:3.3|notAFloat"`
 		Z []*float64 `schema:"c,default:4.4|notAFloat"`

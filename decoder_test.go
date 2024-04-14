@@ -2271,7 +2271,7 @@ func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 		fieldKey := "default-" + string(v)
 		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v))
 		if ferr, ok := e[fieldKey]; ok {
-			// check pointer type error
+			// check pointer type field
 			if ferr.Error() == pErrMsg {
 				continue
 			}

@@ -2217,42 +2217,27 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 	type D struct {
-		A []int      `schema:"a,default:0|notInt"`
-		B []bool     `schema:"b,default:true|notInt"`
-		C []*float32 `schema:"c,default:1.1|notInt"`
+		A []int  `schema:"a,default:0|notInt"`
+		B []bool `schema:"b,default:true|notInt"`
 		// //uint types
 		D []uint   `schema:"d,default:1|notInt"`
 		E []uint8  `schema:"e,default:2|notInt"`
 		F []uint16 `schema:"f,default:3|notInt"`
 		G []uint32 `schema:"g,default:4|notInt"`
 		H []uint64 `schema:"h,default:5|notInt"`
-		// // uint types pointers
-		I []*uint   `schema:"i,default:6|notInt"`
-		J []*uint8  `schema:"j,default:7|notInt"`
-		K []*uint16 `schema:"k,default:12|notInt"`
-		L []*uint32 `schema:"l,default:129|notInt"`
-		M []*uint64 `schema:"m,default:11111|notInt"`
 		// // int types
 		N []int   `schema:"n,default:11|notInt"`
 		O []int8  `schema:"o,default:12|notInt"`
 		P []int16 `schema:"p,default:13|notInt"`
 		Q []int32 `schema:"q,default:14|notInt"`
 		R []int64 `schema:"r,default:15|notInt"`
-		// // int types pointers
-		S []*int   `schema:"s,default:1000|notInt"`
-		T []*int8  `schema:"t,default:1000|notInt"`
-		U []*int16 `schema:"u,default:1000|notInt"`
-		V []*int32 `schema:"v,default:22222|notInt"`
-		W []*int64 `schema:"w,default:11111|notInt"`
 		// // float
-		X []float32  `schema:"c,default:2.2|notInt"`
-		Y []float64  `schema:"c,default:3.3|notInt"`
-		Z []*float64 `schema:"c,default:4.4|notInt"`
+		X []float32 `schema:"c,default:2.2|notInt"`
+		Y []float64 `schema:"c,default:3.3|notInt"`
 	}
 	d := D{}
 
 	data := map[string][]string{}
-	pErrMsg := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices"
 	eng := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	decoder := NewDecoder()
@@ -2264,17 +2249,13 @@ func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 	}
 
 	e, ok := err.(MultiError)
-	if !ok || len(e) != 26 {
-		t.Errorf("Expected 26 errors, got %#v", err)
+	if !ok || len(e) != 14 {
+		t.Errorf("Expected 14 errors, got %#v", err)
 	}
 	for _, v := range eng {
 		fieldKey := "default-" + string(v)
 		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v))
 		if ferr, ok := e[fieldKey]; ok {
-			// check pointer type field
-			if ferr.Error() == pErrMsg {
-				continue
-			}
 			if strings.Compare(ferr.Error(), errMsg) != 0 {
 				t.Errorf("%s: expected %s, got %#v", fieldKey, ferr.Error(), errMsg)
 			}

@@ -2238,7 +2238,6 @@ func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 	d := D{}
 
 	data := map[string][]string{}
-	eng := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	decoder := NewDecoder()
 
@@ -2248,17 +2247,20 @@ func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
 		t.Error("if a different type exists, error should be raised")
 	}
 
+	dType := reflect.TypeOf(d)
+
 	e, ok := err.(MultiError)
-	if !ok || len(e) != 14 {
-		t.Errorf("Expected 14 errors, got %#v", err)
+	if !ok || len(e) != dType.NumField() {
+		t.Errorf("Expected %d errors, got %#v", dType.NumField(), err)
 	}
-	for _, v := range eng {
-		fieldKey := "default-" + string(v)
-		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v))
-		if ferr, ok := e[fieldKey]; ok {
-			if strings.Compare(ferr.Error(), errMsg) != 0 {
-				t.Errorf("%s: expected %s, got %#v", fieldKey, ferr.Error(), errMsg)
-			}
+
+	for i := 0; i < dType.NumField(); i++ {
+		v := dType.Field(i)
+		fieldKey := "default-" + string(v.Name)
+		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v.Name))
+		ferr := e[fieldKey]
+		if strings.Compare(ferr.Error(), errMsg) != 0 {
+			t.Errorf("%s: expected %s, got %#v\n", fieldKey, ferr.Error(), errMsg)
 		}
 	}
 }

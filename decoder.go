@@ -139,9 +139,12 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 				defaultSlice := reflect.MakeSlice(f.typ, 0, cap(vals))
 				for _, val := range vals {
 					// this check is to handle if the wrong value is provided
-					if convertedVal := builtinConverters[f.typ.Elem().Kind()](val); convertedVal.IsValid() {
-						defaultSlice = reflect.Append(defaultSlice, convertedVal)
+					convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
+					if !convertedVal.IsValid() {
+						errs.merge(MultiError{"default-" + f.name: fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name)})
+						break
 					}
+					defaultSlice = reflect.Append(defaultSlice, convertedVal)
 				}
 				vCurrent.Set(defaultSlice)
 			} else if f.typ.Kind() == reflect.Ptr {

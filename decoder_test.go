@@ -7,6 +7,7 @@ package schema
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -2282,9 +2283,58 @@ func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
 
 }
 
+func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
+	type D struct {
+		A []int  `schema:"a,default:0|notInt"`
+		B []bool `schema:"b,default:true|notInt"`
+		// //uint types
+		D []uint   `schema:"d,default:1|notInt"`
+		E []uint8  `schema:"e,default:2|notInt"`
+		F []uint16 `schema:"f,default:3|notInt"`
+		G []uint32 `schema:"g,default:4|notInt"`
+		H []uint64 `schema:"h,default:5|notInt"`
+		// // int types
+		N []int   `schema:"n,default:11|notInt"`
+		O []int8  `schema:"o,default:12|notInt"`
+		P []int16 `schema:"p,default:13|notInt"`
+		Q []int32 `schema:"q,default:14|notInt"`
+		R []int64 `schema:"r,default:15|notInt"`
+		// // float
+		X []float32 `schema:"c,default:2.2|notInt"`
+		Y []float64 `schema:"c,default:3.3|notInt"`
+	}
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err == nil {
+		t.Error("if a different type exists, error should be raised")
+	}
+
+	dType := reflect.TypeOf(d)
+
+	e, ok := err.(MultiError)
+	if !ok || len(e) != dType.NumField() {
+		t.Errorf("Expected %d errors, got %#v", dType.NumField(), err)
+	}
+
+	for i := 0; i < dType.NumField(); i++ {
+		v := dType.Field(i)
+		fieldKey := "default-" + string(v.Name)
+		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v.Name))
+		ferr := e[fieldKey]
+		if strings.Compare(ferr.Error(), errMsg) != 0 {
+			t.Errorf("%s: expected %s, got %#v\n", fieldKey, ferr.Error(), errMsg)
+		}
+	}
+}
+
 func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 	type D struct {
-		A []int    `schema:"a,default:wrong1|wrong2"`
 		B bool     `schema:"b,default:invalid"`
 		C *float32 `schema:"c,default:notAFloat"`
 		//uint types
@@ -2319,7 +2369,7 @@ func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
 
 	d := D{}
 
-	expected := D{A: []int{}}
+	expected := D{}
 
 	data := map[string][]string{}
 

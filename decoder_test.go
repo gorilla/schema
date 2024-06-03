@@ -2057,6 +2057,74 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 	}
 }
 
+type S24 struct {
+	F1 string `schema:"F1"`
+}
+
+type S24e struct {
+	*S24
+	F2 string `schema:"F2"`	
+}
+
+func TestUnmarshallToEmbeddedNoData(t *testing.T) {
+	data := map[string][]string{
+		"F3": {"raw a"},
+	}
+
+	s := &S24e{}
+
+	decoder := NewDecoder()
+	err := decoder.Decode(s, data);
+	
+	expectedErr := `schema: invalid path "F3"`
+	if err.Error() != expectedErr {
+		t.Fatalf("got %q, want %q", err, expectedErr)
+	}
+}
+type S25ee struct {
+	F3 string `schema:"F3"`
+}
+
+type S25e struct {
+	S25ee
+	F2 string `schema:"F2"`
+}
+
+type S25 struct {
+	S25e
+	F1 string `schema:"F1"`
+}
+
+func TestDoubleEmbedded(t *testing.T){
+	data := map[string][]string{
+		"F1": {"raw a"},
+		"F2": {"raw b"},
+		"F3": {"raw c"},
+	}
+
+	
+	s := S25{}
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&s, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := S25{
+		F1: "raw a",
+		S25e: S25e{
+			F2: "raw b",
+			S25ee: S25ee{
+				F3: "raw c",
+			},
+		},
+	}
+	if !reflect.DeepEqual(expected, s) {
+		t.Errorf("Expected %v errors, got %v", expected, s)
+	}
+
+}
+
 func TestDefaultValuesAreSet(t *testing.T) {
 	type N struct {
 		S1 string    `schema:"s1,default:test1"`

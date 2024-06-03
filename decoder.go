@@ -104,6 +104,15 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 	errs := MultiError{}
 
+	if v.Type().Kind() == reflect.Struct {
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+		}
+	}
+
 	for _, f := range struc.fields {
 		vCurrent := v.FieldByName(f.name)
 
@@ -121,7 +130,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 			} else if f.typ.Kind() == reflect.Slice {
 				vals := strings.Split(f.defaultValue, "|")
 
-				//check if slice has one of the supported types for defaults
+				// check if slice has one of the supported types for defaults
 				if _, ok := builtinConverters[f.typ.Elem().Kind()]; !ok {
 					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
 					continue
@@ -129,7 +138,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 				defaultSlice := reflect.MakeSlice(f.typ, 0, cap(vals))
 				for _, val := range vals {
-					//this check is to handle if the wrong value is provided
+					// this check is to handle if the wrong value is provided
 					convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
 					if !convertedVal.IsValid() {
 						errs.merge(MultiError{"default-" + f.name: fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name)})
@@ -145,12 +154,12 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
 				}
 
-				//this check is to handle if the wrong value is provided
+				// this check is to handle if the wrong value is provided
 				if convertedVal := convertPointer(t1.Kind(), f.defaultValue); convertedVal.IsValid() {
 					vCurrent.Set(convertedVal)
 				}
 			} else {
-				//this check is to handle if the wrong value is provided
+				// this check is to handle if the wrong value is provided
 				if convertedVal := builtinConverters[f.typ.Kind()](f.defaultValue); convertedVal.IsValid() {
 					vCurrent.Set(builtinConverters[f.typ.Kind()](f.defaultValue))
 				}

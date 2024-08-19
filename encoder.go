@@ -3,11 +3,54 @@ package schema
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type encoderFunc func(reflect.Value) string
+
+// UrlValues represents url.Values which could be encoded with custom order.
+type UrlValues struct {
+	keys   []string
+	values map[string][]string
+}
+
+// Values returns map[string][]string which can be used as url.Values.
+func (v *UrlValues) Values() map[string][]string {
+	return v.values
+}
+
+// Encode encodes the values into URL encoded form ("foo=quux&bar=baz") sorted by custom order.
+func (v *UrlValues) Encode() string {
+	if len(v.values) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	for _, k := range v.keys {
+		vs := v.values[k]
+		keyEscaped := url.QueryEscape(k)
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(keyEscaped)
+			buf.WriteByte('=')
+			buf.WriteString(url.QueryEscape(v))
+		}
+	}
+	return buf.String()
+}
+
+func (v *UrlValues) removeKey(key string) {
+	for i, x := range v.keys {
+		if x == key {
+			v.keys = append(v.keys[:i], v.keys[i+1:]...)
+			return
+		}
+	}
+}
 
 // Encoder encodes values from a struct into url.Values.
 type Encoder struct {
@@ -23,14 +66,30 @@ func NewEncoder() *Encoder {
 // Encode encodes a struct into map[string][]string.
 //
 // Intended for use with url.Values.
-func (e *Encoder) Encode(src interface{}, dst map[string][]string) error {
+func (e *Encoder) Encode(src any, dst map[string][]string) error {
 	v := reflect.ValueOf(src)
+	values := &UrlValues{
+		values: dst,
+	}
 
-	return e.encode(v, dst)
+	return e.encode(v, values)
+}
+
+// EncodeValues encodes a struct into UrlValues which will keep the order of the struct's fields.
+func (e *Encoder) EncodeValues(src any) (*UrlValues, error) {
+	v := reflect.ValueOf(src)
+	values := &UrlValues{
+		values: map[string][]string{},
+	}
+
+	if err := e.encode(v, values); err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // RegisterEncoder registers a converter for encoding a custom type.
-func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value) string) {
+func (e *Encoder) RegisterEncoder(value any, encoder func(reflect.Value) string) {
 	e.regenc[reflect.TypeOf(value)] = encoder
 }
 
@@ -75,7 +134,7 @@ func isZero(v reflect.Value) bool {
 	return v.Interface() == z.Interface()
 }
 
-func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
+func (e *Encoder) encode(v reflect.Value, values *UrlValues) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -94,7 +153,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
-			err := e.encode(v.Field(i).Elem(), dst)
+			err := e.encode(v.Field(i).Elem(), values)
 			if err != nil {
 				errors[v.Field(i).Elem().Type().String()] = err
 			}
@@ -110,12 +169,15 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 				continue
 			}
 
-			dst[name] = append(dst[name], value)
+			if _, ok := values.values[name]; !ok {
+				values.keys = append(values.keys, name)
+			}
+			values.values[name] = append(values.values[name], value)
 			continue
 		}
 
 		if v.Field(i).Type().Kind() == reflect.Struct {
-			err := e.encode(v.Field(i), dst)
+			err := e.encode(v.Field(i), values)
 			if err != nil {
 				errors[v.Field(i).Type().String()] = err
 			}
@@ -132,13 +194,18 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 
 		// Encode a slice.
-		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
+		sliceLen := v.Field(i).Len()
+		if sliceLen == 0 && opts.Contains("omitempty") {
 			continue
 		}
 
-		dst[name] = []string{}
-		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+		if _, ok := values.values[name]; ok {
+			values.removeKey(name)
+		}
+		values.keys = append(values.keys, name)
+		values.values[name] = make([]string, 0, sliceLen)
+		for j := 0; j < sliceLen; j++ {
+			values.values[name] = append(values.values[name], encFunc(v.Field(i).Index(j)))
 		}
 	}
 

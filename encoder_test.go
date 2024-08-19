@@ -523,3 +523,59 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
 }
+
+func TestUrlValues(t *testing.T) {
+	v1 := UrlValues{
+		keys: []string{"a"},
+		values: map[string][]string{
+			"a": {"some&value"},
+		},
+	}
+	v1Encoded, v1Expect := v1.Encode(), "a=some%26value"
+	if v1Encoded != v1Expect {
+		t.Fatalf("Expected: %v, got: %v", v1Expect, v1Encoded)
+	}
+
+	v2 := UrlValues{
+		keys: []string{"z", "a", "s", "x"},
+		values: map[string][]string{
+			"a": {"valueA", "value%b"},
+			"s": {"valueS"},
+			"x": {""},
+			"z": {"value$Z"},
+		},
+	}
+	v2Encoded, v2Expect := v2.Encode(), "z=value%24Z&a=valueA&a=value%25b&s=valueS&x="
+	if v2Encoded != v2Expect {
+		t.Fatalf("Expected: %v, got: %v", v2Expect, v2Encoded)
+	}
+}
+
+func TestEncodeValues(t *testing.T) {
+	type S1 struct {
+		Order  []string `schema:"order"`
+		Asc    int      `schema:"asc"`
+		PubKey string   `schema:"pubkey"`
+		Method string   `schema:"method"`
+	}
+
+	s1 := S1{
+		Order:  []string{"name1", "name2"},
+		Asc:    1,
+		PubKey: "example-pubkey-foobar",
+		Method: "HMAC-256",
+	}
+
+	encoder := NewEncoder()
+	values, err := encoder.EncodeValues(s1)
+	noError(t, err)
+	expectOrder := []string{"order", "asc", "pubkey", "method"}
+	if len(values.keys) != len(expectOrder) {
+		t.Fatalf("Expected length of %v, but got %v", len(expectOrder), len(values.keys))
+	}
+	for i, k := range values.keys {
+		if expectOrder[i] != k {
+			t.Fatalf("Expected: %v, got: %v", expectOrder[i], k)
+		}
+	}
+}

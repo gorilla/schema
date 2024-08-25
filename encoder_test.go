@@ -523,3 +523,32 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
 }
+
+func TestPtrsWithDefaultOmitEmpty(t *testing.T) {
+	type S1 struct {
+		S *string `schema:"s"`
+		B *bool   `schema:"b"`
+	}
+
+	ss := S1{} // all fields are nil
+
+	// default encoder encodes ptrs as "null", which are not decodable
+	// so one has to use omitempty tags
+	encoder := NewEncoder()
+
+	vals := map[string][]string{}
+	err := encoder.Encode(ss, vals)
+
+	noError(t, err)
+	valsLength(t, 2, vals)
+	valExists(t, "s", "null", vals)
+	valExists(t, "b", "null", vals)
+
+	// however, if encoder.SetOmitEmptyDefault(true) is used such fields should be ignored
+	vals = map[string][]string{}
+	encoder.SetOmitEmptyDefault(true)
+	err = encoder.Encode(ss, vals)
+
+	noError(t, err)
+	valsLength(t, 0, vals)
+}

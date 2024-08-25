@@ -11,8 +11,9 @@ type encoderFunc func(reflect.Value) string
 
 // Encoder encodes values from a struct into url.Values.
 type Encoder struct {
-	cache  *cache
-	regenc map[reflect.Type]encoderFunc
+	cache     *cache
+	regenc    map[reflect.Type]encoderFunc
+	omitEmpty bool
 }
 
 // NewEncoder returns a new Encoder with defaults.
@@ -38,6 +39,16 @@ func (e *Encoder) RegisterEncoder(value interface{}, encoder func(reflect.Value)
 // The default tag is "schema".
 func (e *Encoder) SetAliasTag(tag string) {
 	e.cache.tag = tag
+}
+
+// SetOmitEmptyDefault allows to set omit empty behaviour by default.
+// When pointers to values are used in fields it is required to use omitempty to avoid
+// encoding them as 'null' (which are not decodable by Decoder). This function allows
+// to make omitempty behaviour to be a default, rather than requiring to specify
+// per field tag.
+// The default is false, i.e. one should specify 'omitempty' in tags as usual.
+func (e *Encoder) SetOmitEmptyDefault(omit bool) {
+	e.omitEmpty = omit
 }
 
 // isValidStructPointer test if input value is a valid struct pointer.
@@ -106,7 +117,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
 			value := encFunc(v.Field(i))
-			if opts.Contains("omitempty") && isZero(v.Field(i)) {
+			if (e.omitEmpty || opts.Contains("omitempty")) && isZero(v.Field(i)) {
 				continue
 			}
 
@@ -132,7 +143,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 
 		// Encode a slice.
-		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
+		if v.Field(i).Len() == 0 && (e.omitEmpty || opts.Contains("omitempty")) {
 			continue
 		}
 

@@ -12,6 +12,8 @@ import (
 	"sync"
 )
 
+const defaultCacheTag = "schema"
+
 var errInvalidPath = errors.New("schema: invalid path")
 
 // newCache returns a new cache.
@@ -19,7 +21,7 @@ func newCache() *cache {
 	c := cache{
 		m:       make(map[reflect.Type]*structInfo),
 		regconv: make(map[reflect.Type]Converter),
-		tag:     "schema",
+		tag:     defaultCacheTag,
 	}
 	return &c
 }

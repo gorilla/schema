@@ -2527,3 +2527,47 @@ func TestDecoder_SetMaxSize(t *testing.T) {
 		}
 	})
 }
+
+func TestNewDecoderWithOptions(t *testing.T) {
+	defaultDecoder := NewDecoder()
+
+	aliasTag := defaultDecoder.cache.tag + "-test"
+	decoder := NewDecoder(
+		WithAliasTagDecoderOpt(aliasTag),
+		WithZeroEmptyDecoderOpt(!defaultDecoder.zeroEmpty),
+		WithIgnoreUnknownKeysDecoderOpt(!defaultDecoder.ignoreUnknownKeys),
+		WithMaxSizeDecoderOpt(defaultDecoder.maxSize+1),
+	)
+
+	if decoder.cache.tag != aliasTag {
+		t.Errorf(
+			"Expected Decoder.cache.tag to be %q, got %q",
+			aliasTag,
+			decoder.cache.tag,
+		)
+	}
+
+	if decoder.ignoreUnknownKeys == defaultDecoder.ignoreUnknownKeys {
+		t.Errorf(
+			"Expected Decoder.ignoreUnknownKeys to be %t, got %t",
+			!decoder.ignoreUnknownKeys,
+			decoder.ignoreUnknownKeys,
+		)
+	}
+
+	if decoder.zeroEmpty == defaultDecoder.zeroEmpty {
+		t.Errorf(
+			"Expected Decoder.zeroEmpty to be %t, got %t",
+			!decoder.zeroEmpty,
+			decoder.zeroEmpty,
+		)
+	}
+
+	if decoder.maxSize != defaultDecoder.maxSize+1 {
+		t.Errorf(
+			"Expected Decoder.maxSize to be %d, got %d",
+			defaultDecoder.maxSize+1,
+			decoder.maxSize,
+		)
+	}
+}

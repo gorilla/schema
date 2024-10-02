@@ -16,9 +16,43 @@ const (
 	defaultMaxSize = 16000
 )
 
+type option[T Decoder | Encoder] func(d *T)
+
 // NewDecoder returns a new Decoder.
-func NewDecoder() *Decoder {
-	return &Decoder{cache: newCache(), maxSize: defaultMaxSize}
+func NewDecoder(opts ...option[Decoder]) *Decoder {
+	d := &Decoder{cache: newCache(), maxSize: defaultMaxSize}
+	for _, opt := range opts {
+		opt(d)
+	}
+	return d
+}
+
+// See [Decoder.SetAliasTag] for more information.
+func WithAliasTagDecoderOpt(tag string) option[Decoder] {
+	return func(d *Decoder) {
+		d.SetAliasTag(tag)
+	}
+}
+
+// See [Decoder.ZeroEmpty] for more information.
+func WithZeroEmptyDecoderOpt(z bool) option[Decoder] {
+	return func(d *Decoder) {
+		d.ZeroEmpty(z)
+	}
+}
+
+// See [Decoder.IgnoreUnknownKeys] for more information.
+func WithIgnoreUnknownKeysDecoderOpt(i bool) option[Decoder] {
+	return func(d *Decoder) {
+		d.IgnoreUnknownKeys(i)
+	}
+}
+
+// See [Decoder.MaxSize] for more information.
+func WithMaxSizeDecoderOpt(size int) option[Decoder] {
+	return func(d *Decoder) {
+		d.MaxSize(size)
+	}
 }
 
 // Decoder decodes values from a map[string][]string to a struct.

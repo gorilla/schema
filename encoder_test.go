@@ -523,3 +523,18 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
 }
+
+func TestNewEncoderWithOptions(t *testing.T) {
+	aliasTag := defaultCacheTag + "-test"
+	encoder := NewEncoder(
+		WithAliasTagEncoderOpt(aliasTag),
+	)
+
+	if encoder.cache.tag != aliasTag {
+		t.Errorf(
+			"Expected Encoder.cache.tag to be %q, got %q",
+			aliasTag,
+			encoder.cache.tag,
+		)
+	}
+}

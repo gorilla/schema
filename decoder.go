@@ -8,6 +8,7 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 )
@@ -86,7 +87,13 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	}
 	v = v.Elem()
 	t := v.Type()
+
 	errors := MultiError{}
+	src, err := d.withDefaults(src, t)
+	if err != nil {
+		errors.merge(err)
+	}
+
 	for path, values := range src {
 		if parts, err := d.cache.parsePath(path, t); err == nil {
 			if err = d.decode(v, path, parts, values); err != nil {
@@ -96,7 +103,6 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 			errors[path] = UnknownKeyError{Key: path}
 		}
 	}
-	errors.merge(d.setDefaults(t, v))
 	errors.merge(d.checkRequired(t, src))
 	if len(errors) > 0 {
 		return errors
@@ -104,82 +110,26 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	return nil
 }
 
-// setDefaults sets the default values when the `default` tag is specified,
-// default is supported on basic/primitive types and their pointers,
-// nested structs can also have default tags
-func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
+func (d *Decoder) withDefaults(src map[string][]string, t reflect.Type) (map[string][]string, MultiError) {
 	struc := d.cache.get(t)
-	if struc == nil {
-		// unexpect, cache.get never return nil
-		return MultiError{"default-" + t.Name(): errors.New("cache fail")}
-	}
+	srcWithDefaults := maps.Clone(src)
 
 	errs := MultiError{}
+	for _, fieldInfo := range struc.fields {
+		if fieldInfo.defaultValue != "" && fieldInfo.isRequired {
+			errs.merge(MultiError{"default-" + fieldInfo.name: errors.New("required fields cannot have a default value")})
+		}
 
-	if v.Type().Kind() == reflect.Struct {
-		for i := 0; i < v.NumField(); i++ {
-			field := v.Field(i)
-			if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
-				field.Set(reflect.New(field.Type().Elem()))
+		if _, ok := srcWithDefaults[fieldInfo.alias]; !ok && fieldInfo.defaultValue != "" {
+			values := []string{fieldInfo.defaultValue}
+			if fieldInfo.typ.Kind() == reflect.Slice {
+				values = strings.Split(fieldInfo.defaultValue, "|")
 			}
+			srcWithDefaults[fieldInfo.alias] = values
 		}
 	}
 
-	for _, f := range struc.fields {
-		vCurrent := v.FieldByName(f.name)
-
-		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
-			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))
-		} else if isPointerToStruct(vCurrent) && f.defaultValue == "" {
-			errs.merge(d.setDefaults(vCurrent.Elem().Type(), vCurrent.Elem()))
-		}
-
-		if f.defaultValue != "" && f.isRequired {
-			errs.merge(MultiError{"default-" + f.name: errors.New("required fields cannot have a default value")})
-		} else if f.defaultValue != "" && vCurrent.IsZero() && !f.isRequired {
-			if f.typ.Kind() == reflect.Struct {
-				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
-			} else if f.typ.Kind() == reflect.Slice {
-				vals := strings.Split(f.defaultValue, "|")
-
-				// check if slice has one of the supported types for defaults
-				if _, ok := builtinConverters[f.typ.Elem().Kind()]; !ok {
-					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
-					continue
-				}
-
-				defaultSlice := reflect.MakeSlice(f.typ, 0, cap(vals))
-				for _, val := range vals {
-					// this check is to handle if the wrong value is provided
-					convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
-					if !convertedVal.IsValid() {
-						errs.merge(MultiError{"default-" + f.name: fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name)})
-						break
-					}
-					defaultSlice = reflect.Append(defaultSlice, convertedVal)
-				}
-				vCurrent.Set(defaultSlice)
-			} else if f.typ.Kind() == reflect.Ptr {
-				t1 := f.typ.Elem()
-
-				if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
-					errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
-				}
-
-				// this check is to handle if the wrong value is provided
-				if convertedVal := convertPointer(t1.Kind(), f.defaultValue); convertedVal.IsValid() {
-					vCurrent.Set(convertedVal)
-				}
-			} else {
-				// this check is to handle if the wrong value is provided
-				if convertedVal := builtinConverters[f.typ.Kind()](f.defaultValue); convertedVal.IsValid() {
-					vCurrent.Set(builtinConverters[f.typ.Kind()](f.defaultValue))
-				}
-			}
-		}
-	}
-
-	return errs
+	return srcWithDefaults, errs
 }
 
 func isPointerToStruct(v reflect.Value) bool {

@@ -627,12 +627,14 @@ func (e MultiError) Error() string {
 	return fmt.Sprintf("%s (and %d other errors)", s, len(e)-1)
 }
 
+//go:noinline
 func (e MultiError) add(key string, err error) {
 	if e[key] == nil {
 		e[key] = err
 	}
 }
 
+//go:noinline
 func (e MultiError) merge(errors MultiError) {
 	for key, err := range errors {
 		if e[key] == nil {

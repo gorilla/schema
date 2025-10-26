@@ -138,7 +138,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 		}
 
 		if f.isRequired {
-			errs.merge(MultiError{"default-" + f.name: errors.New("required fields cannot have a default value")})
+			errs.add("default-"+f.name, errRequiredFieldsCantHaveDefaults)
 			continue
 		}
 		if !vCurrent.IsZero() {
@@ -147,14 +147,14 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 		switch f.typ.Kind() {
 		case reflect.Struct:
-			errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
+			errs.add("default-"+f.name, errUnsupportedDefaultFieldType)
 
 		case reflect.Slice:
 			vals := strings.Split(f.defaultValue, "|")
 
 			// check if slice has one of the supported types for defaults
 			if _, ok := builtinConverters[f.typ.Elem().Kind()]; !ok {
-				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
+				errs.add("default-"+f.name, errUnsupportedDefaultFieldType)
 				continue
 			}
 
@@ -163,7 +163,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 				// this check is to handle if the wrong value is provided
 				convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
 				if !convertedVal.IsValid() {
-					errs.merge(MultiError{"default-" + f.name: fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name)})
+					errs.add("default-"+f.name, fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name))
 					break
 				}
 				defaultSlice = reflect.Append(defaultSlice, convertedVal)
@@ -174,7 +174,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 			t1 := f.typ.Elem()
 
 			if t1.Kind() == reflect.Struct || t1.Kind() == reflect.Slice {
-				errs.merge(MultiError{"default-" + f.name: errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")})
+				errs.add("default-"+f.name, errUnsupportedDefaultFieldType)
 			}
 
 			// this check is to handle if the wrong value is provided
@@ -557,6 +557,11 @@ type unmarshaler struct {
 
 // Errors ---------------------------------------------------------------------
 
+var (
+	errRequiredFieldsCantHaveDefaults = errors.New("required fields cannot have a default value")
+	errUnsupportedDefaultFieldType    = errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")
+)
+
 // ConversionError stores information about a failed conversion.
 type ConversionError struct {
 	Key   string       // key from the source map.
@@ -620,6 +625,12 @@ func (e MultiError) Error() string {
 		return s + " (and 1 other error)"
 	}
 	return fmt.Sprintf("%s (and %d other errors)", s, len(e)-1)
+}
+
+func (e MultiError) add(key string, err error) {
+	if e[key] == nil {
+		e[key] = err
+	}
 }
 
 func (e MultiError) merge(errors MultiError) {

@@ -119,7 +119,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	if v.Type().Kind() == reflect.Struct {
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
-			if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
+			if field.Kind() == reflect.Ptr && field.IsNil() && isAnonymousField(t, i) {
 				field.Set(reflect.New(field.Type().Elem()))
 			}
 		}
@@ -163,7 +163,7 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 				// this check is to handle if the wrong value is provided
 				convertedVal := builtinConverters[f.typ.Elem().Kind()](val)
 				if !convertedVal.IsValid() {
-					errs.add("default-"+f.name, fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name))
+					errs.add("default-"+f.name, errIncompatibleValue(val, f))
 					break
 				}
 				defaultSlice = reflect.Append(defaultSlice, convertedVal)
@@ -195,6 +195,11 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 func isPointerToStruct(v reflect.Value) bool {
 	return !v.IsZero() && v.Type().Kind() == reflect.Ptr && v.Elem().Type().Kind() == reflect.Struct
+}
+
+//go:noinline
+func isAnonymousField(t reflect.Type, nr int) bool {
+	return t.Field(nr).Anonymous
 }
 
 // checkRequired checks whether required fields are empty
@@ -561,6 +566,11 @@ var (
 	errRequiredFieldsCantHaveDefaults = errors.New("required fields cannot have a default value")
 	errUnsupportedDefaultFieldType    = errors.New("default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices")
 )
+
+//go:noinline
+func errIncompatibleValue(val string, f *fieldInfo) error {
+	return fmt.Errorf("failed setting default: %s is not compatible with field %s type", val, f.name)
+}
 
 // ConversionError stores information about a failed conversion.
 type ConversionError struct {

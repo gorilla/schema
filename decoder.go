@@ -127,6 +127,9 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 	for _, f := range struc.fields {
 		vCurrent := v.FieldByName(f.name)
+		if !vCurrent.CanSet() {
+			continue
+		}
 
 		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
 			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))

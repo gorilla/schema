@@ -7,6 +7,7 @@ package schema
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -69,9 +70,7 @@ func (id *S19) UnmarshalText(text []byte) error {
 	if len(buf) > len(*id) {
 		return errors.New("out of range")
 	}
-	for i := range buf {
-		(*id)[i] = buf[i]
-	}
+	copy((*id)[:], buf)
 	return nil
 }
 
@@ -673,7 +672,10 @@ func TestEmptyValue(t *testing.T) {
 		"F01": {"", "foo"},
 	}
 	s := &S5{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.F01) != 1 {
 		t.Errorf("Expected 1 values in F01")
 	}
@@ -706,7 +708,10 @@ func TestUnexportedField(t *testing.T) {
 		"id": {"identifier"},
 	}
 	s := &S6{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.id != "" {
 		t.Errorf("Unexported field expected to be ignored")
 	}
@@ -724,7 +729,10 @@ func TestMultipleValues(t *testing.T) {
 	}
 
 	s := S7{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.ID != "1" {
 		t.Errorf("Last defined value must be used when multiple values for same field are provided")
 	}
@@ -742,7 +750,10 @@ func TestSetAliasTag(t *testing.T) {
 	s := S8{}
 	dec := NewDecoder()
 	dec.SetAliasTag("json")
-	dec.Decode(&s, data)
+	err := dec.Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.ID != "foo" {
 		t.Fatalf("Bad value: got %q, want %q", s.ID, "foo")
 	}
@@ -813,7 +824,10 @@ func TestEmbeddedField(t *testing.T) {
 		"Id": {"identifier"},
 	}
 	s := &S10{}
-	NewDecoder().Decode(s, data)
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s.Id != "identifier" {
 		t.Errorf("Missing support for embedded fields")
 	}
@@ -1148,7 +1162,10 @@ func TestCSVSlice(t *testing.T) {
 	}
 
 	s := S12A{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.ID) != 2 {
 		t.Errorf("Expected two values in the result list, got %+v", s.ID)
 	}
@@ -1161,14 +1178,17 @@ type S12B struct {
 	ID []string
 }
 
-//Decode should not split on , into a slice for string only
+// Decode should not split on , into a slice for string only
 func TestCSVStringSlice(t *testing.T) {
 	data := map[string][]string{
 		"ID": {"0,1"},
 	}
 
 	s := S12B{}
-	NewDecoder().Decode(&s, data)
+	err := NewDecoder().Decode(&s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if len(s.ID) != 1 {
 		t.Errorf("Expected one value in the result list, got %+v", s.ID)
 	}
@@ -1177,7 +1197,7 @@ func TestCSVStringSlice(t *testing.T) {
 	}
 }
 
-//Invalid data provided by client should not panic (github issue 33)
+// Invalid data provided by client should not panic (github issue 33)
 func TestInvalidDataProvidedByClient(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1186,7 +1206,7 @@ func TestInvalidDataProvidedByClient(t *testing.T) {
 	}()
 
 	type S struct {
-		f string
+		f string // nolint:unused
 	}
 
 	data := map[string][]string{
@@ -1202,7 +1222,7 @@ func TestInvalidDataProvidedByClient(t *testing.T) {
 // underlying cause of error in issue 33
 func TestInvalidPathInCacheParsePath(t *testing.T) {
 	type S struct {
-		f string
+		f string // nolint:unused
 	}
 
 	typ := reflect.ValueOf(new(S)).Elem().Type()
@@ -1218,7 +1238,10 @@ func TestDecodeToTypedField(t *testing.T) {
 	type Aa bool
 	s1 := &struct{ Aa }{}
 	v1 := map[string][]string{"Aa": {"true"}}
-	NewDecoder().Decode(s1, v1)
+	err := NewDecoder().Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	if s1.Aa != Aa(true) {
 		t.Errorf("s1: expected %v, got %v", true, s1.Aa)
 	}
@@ -1238,7 +1261,10 @@ func TestRegisterConverter(t *testing.T) {
 	decoder.RegisterConverter(s1.Bb, func(s string) reflect.Value { return reflect.ValueOf(2) })
 
 	v1 := map[string][]string{"Aa": {"4"}, "Bb": {"5"}}
-	decoder.Decode(s1, v1)
+	err := decoder.Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 
 	if s1.Aa != Aa(1) {
 		t.Errorf("s1.Aa: expected %v, got %v", 1, s1.Aa)
@@ -1260,9 +1286,12 @@ func TestRegisterConverterSlice(t *testing.T) {
 	}{}
 
 	expected := []string{"one", "two", "three"}
-	decoder.Decode(&result, map[string][]string{
+	err := decoder.Decode(&result, map[string][]string{
 		"multiple": []string{"one,two,three"},
 	})
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 	for i := range expected {
 		if got, want := expected[i], result.Multiple[i]; got != want {
 			t.Errorf("%d: got %s, want %s", i, got, want)
@@ -1868,8 +1897,11 @@ func TestRegisterConverterOverridesTextUnmarshaler(t *testing.T) {
 	ts := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	decoder.RegisterConverter(s1.MyTime, func(s string) reflect.Value { return reflect.ValueOf(ts) })
 
-	v1 := map[string][]string{"MyTime": {"4"}, "Bb": {"5"}}
-	decoder.Decode(s1, v1)
+	v1 := map[string][]string{"MyTime": {"4"}}
+	err := decoder.Decode(s1, v1)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
 
 	if s1.MyTime != MyTime(ts) {
 		t.Errorf("s1.Aa: expected %v, got %v", ts, s1.MyTime)
@@ -1951,7 +1983,7 @@ func TestTextUnmarshalerTypeSliceOfStructs(t *testing.T) {
 	sb := struct {
 		Value S21B
 	}{}
-	if err := decoder.Decode(&sb, data); err == invalidPath {
+	if err := decoder.Decode(&sb, data); err == errInvalidPath {
 		t.Fatal("Expecting invalid path error", err)
 	}
 }
@@ -2023,4 +2055,475 @@ func TestUnmashalPointerToEmbedded(t *testing.T) {
 	if !reflect.DeepEqual(expected, s.Value) {
 		t.Errorf("Expected %v errors, got %v", expected, s.Value)
 	}
+}
+
+type S24 struct {
+	F1 string `schema:"F1"`
+}
+
+type S24e struct {
+	*S24
+	F2 string `schema:"F2"`
+}
+
+func TestUnmarshallToEmbeddedNoData(t *testing.T) {
+	data := map[string][]string{
+		"F3": {"raw a"},
+	}
+
+	s := &S24e{}
+
+	decoder := NewDecoder()
+	err := decoder.Decode(s, data)
+
+	expectedErr := `schema: invalid path "F3"`
+	if err.Error() != expectedErr {
+		t.Fatalf("got %q, want %q", err, expectedErr)
+	}
+}
+
+type S25ee struct {
+	F3 string `schema:"F3"`
+}
+
+type S25e struct {
+	S25ee
+	F2 string `schema:"F2"`
+}
+
+type S25 struct {
+	S25e
+	F1 string `schema:"F1"`
+}
+
+func TestDoubleEmbedded(t *testing.T) {
+	data := map[string][]string{
+		"F1": {"raw a"},
+		"F2": {"raw b"},
+		"F3": {"raw c"},
+	}
+
+	s := S25{}
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&s, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := S25{
+		F1: "raw a",
+		S25e: S25e{
+			F2: "raw b",
+			S25ee: S25ee{
+				F3: "raw c",
+			},
+		},
+	}
+	if !reflect.DeepEqual(expected, s) {
+		t.Errorf("Expected %v errors, got %v", expected, s)
+	}
+
+}
+
+func TestDefaultValuesAreSet(t *testing.T) {
+	type N struct {
+		S1 string    `schema:"s1,default:test1"`
+		I2 int       `schema:"i2,default:22"`
+		R2 []float64 `schema:"r2,default:2|3.5|11.01"`
+	}
+
+	type D struct {
+		N
+		S string   `schema:"s,default:test1"`
+		I int      `schema:"i,default:21"`
+		J int8     `schema:"j,default:2"`
+		K int16    `schema:"k,default:-455"`
+		L int32    `schema:"l,default:899"`
+		M int64    `schema:"m,default:12455"`
+		B bool     `schema:"b,default:false"`
+		F float64  `schema:"f,default:3.14"`
+		G float32  `schema:"g,default:19.12"`
+		U uint     `schema:"u,default:1"`
+		V uint8    `schema:"v,default:190"`
+		W uint16   `schema:"w,default:20000"`
+		Y uint32   `schema:"y,default:156666666"`
+		Z uint64   `schema:"z,default:1545465465465546"`
+		X []string `schema:"x,default:x1|x2"`
+	}
+
+	data := map[string][]string{}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		N: N{
+			S1: "test1",
+			I2: 22,
+			R2: []float64{2, 3.5, 11.01},
+		},
+		S: "test1",
+		I: 21,
+		J: 2,
+		K: -455,
+		L: 899,
+		M: 12455,
+		B: false,
+		F: 3.14,
+		G: 19.12,
+		U: 1,
+		V: 190,
+		W: 20000,
+		Y: 156666666,
+		Z: 1545465465465546,
+		X: []string{"x1", "x2"},
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+
+	type P struct {
+		*N
+		S *string  `schema:"s,default:test1"`
+		I *int     `schema:"i,default:21"`
+		J *int8    `schema:"j,default:2"`
+		K *int16   `schema:"k,default:-455"`
+		L *int32   `schema:"l,default:899"`
+		M *int64   `schema:"m,default:12455"`
+		B *bool    `schema:"b,default:false"`
+		F *float64 `schema:"f,default:3.14"`
+		G *float32 `schema:"g,default:19.12"`
+		U *uint    `schema:"u,default:1"`
+		V *uint8   `schema:"v,default:190"`
+		W *uint16  `schema:"w,default:20000"`
+		Y *uint32  `schema:"y,default:156666666"`
+		Z *uint64  `schema:"z,default:1545465465465546"`
+		X []string `schema:"x,default:x1|x2"`
+	}
+
+	p := P{N: &N{}}
+
+	if err := decoder.Decode(&p, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	vExpected := reflect.ValueOf(expected)
+	vActual := reflect.ValueOf(p)
+
+	i := 0
+
+	for i < vExpected.NumField() {
+		if !reflect.DeepEqual(vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface()) {
+			t.Errorf("Expected %v, got %v", vExpected.Field(i).Interface(), reflect.Indirect(vActual.Field(i)).Interface())
+		}
+		i++
+	}
+}
+
+func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
+	type D struct {
+		S string  `schema:"s,default:test1"`
+		I int     `schema:"i,default:21"`
+		B bool    `schema:"b,default:false"`
+		F float64 `schema:"f,default:3.14"`
+		U uint    `schema:"u,default:1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	if err := decoder.Decode(&d, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		S: "s",
+		I: 1,
+		B: true,
+		F: 0.22,
+		U: 14,
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+}
+
+func TestRequiredFieldsCannotHaveDefaults(t *testing.T) {
+	type D struct {
+		S string  `schema:"s,required,default:test1"`
+		I int     `schema:"i,required,default:21"`
+		B bool    `schema:"b,required,default:false"`
+		F float64 `schema:"f,required,default:3.14"`
+		U uint    `schema:"u,required,default:1"`
+	}
+
+	data := map[string][]string{"s": {"s"}, "i": {"1"}, "b": {"true"}, "f": {"0.22"}, "u": {"14"}}
+
+	d := D{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "required fields cannot have a default value"
+
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+
+}
+
+func TestInvalidDefaultElementInSliceRaiseError(t *testing.T) {
+	type D struct {
+		A []int  `schema:"a,default:0|notInt"`
+		B []bool `schema:"b,default:true|notInt"`
+		// //uint types
+		D []uint   `schema:"d,default:1|notInt"`
+		E []uint8  `schema:"e,default:2|notInt"`
+		F []uint16 `schema:"f,default:3|notInt"`
+		G []uint32 `schema:"g,default:4|notInt"`
+		H []uint64 `schema:"h,default:5|notInt"`
+		// // int types
+		N []int   `schema:"n,default:11|notInt"`
+		O []int8  `schema:"o,default:12|notInt"`
+		P []int16 `schema:"p,default:13|notInt"`
+		Q []int32 `schema:"q,default:14|notInt"`
+		R []int64 `schema:"r,default:15|notInt"`
+		// // float
+		X []float32 `schema:"c,default:2.2|notInt"`
+		Y []float64 `schema:"c,default:3.3|notInt"`
+	}
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err == nil {
+		t.Error("if a different type exists, error should be raised")
+	}
+
+	dType := reflect.TypeOf(d)
+
+	e, ok := err.(MultiError)
+	if !ok || len(e) != dType.NumField() {
+		t.Errorf("Expected %d errors, got %#v", dType.NumField(), err)
+	}
+
+	for i := 0; i < dType.NumField(); i++ {
+		v := dType.Field(i)
+		fieldKey := "default-" + string(v.Name)
+		errMsg := fmt.Sprintf("failed setting default: notInt is not compatible with field %s type", string(v.Name))
+		ferr := e[fieldKey]
+		if strings.Compare(ferr.Error(), errMsg) != 0 {
+			t.Errorf("%s: expected %s, got %#v\n", fieldKey, ferr.Error(), errMsg)
+		}
+	}
+}
+
+func TestInvalidDefaultsValuesHaveNoEffect(t *testing.T) {
+	type D struct {
+		B bool     `schema:"b,default:invalid"`
+		C *float32 `schema:"c,default:notAFloat"`
+		//uint types
+		D uint   `schema:"d,default:notUint"`
+		E uint8  `schema:"e,default:notUint"`
+		F uint16 `schema:"f,default:notUint"`
+		G uint32 `schema:"g,default:notUint"`
+		H uint64 `schema:"h,default:notUint"`
+		// uint types pointers
+		I *uint   `schema:"i,default:notUint"`
+		J *uint8  `schema:"j,default:notUint"`
+		K *uint16 `schema:"k,default:notUint"`
+		L *uint32 `schema:"l,default:notUint"`
+		M *uint64 `schema:"m,default:notUint"`
+		// int types
+		N int   `schema:"n,default:notInt"`
+		O int8  `schema:"o,default:notInt"`
+		P int16 `schema:"p,default:notInt"`
+		Q int32 `schema:"q,default:notInt"`
+		R int64 `schema:"r,default:notInt"`
+		// int types pointers
+		S *int   `schema:"s,default:notInt"`
+		T *int8  `schema:"t,default:notInt"`
+		U *int16 `schema:"u,default:notInt"`
+		V *int32 `schema:"v,default:notInt"`
+		W *int64 `schema:"w,default:notInt"`
+		// float
+		X float32  `schema:"c,default:notAFloat"`
+		Y float64  `schema:"c,default:notAFloat"`
+		Z *float64 `schema:"c,default:notAFloat"`
+	}
+
+	d := D{}
+
+	expected := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	if err != nil {
+		t.Errorf("decoding should succeed but got error: %q", err)
+	}
+
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("expected %v but got %v", expected, d)
+	}
+}
+
+func TestDefaultsAreNotSupportedForStructsAndStructSlices(t *testing.T) {
+	type C struct {
+		C string `schema:"c"`
+	}
+
+	type D struct {
+		S S1     `schema:"s,default:{f1:0}"`
+		A []C    `schema:"a,default:{c:test1}|{c:test2}"`
+		B []*int `schema:"b,default:12"`
+		E *C     `schema:"e,default:{c:test3}"`
+	}
+
+	d := D{}
+
+	data := map[string][]string{}
+
+	decoder := NewDecoder()
+
+	err := decoder.Decode(&d, data)
+
+	expected := "default option is supported only on: bool, float variants, string, unit variants types or their corresponding pointers or slices"
+
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Errorf("decoding should fail with error msg %s got %q", expected, err)
+	}
+}
+
+func TestDecoder_MaxSize(t *testing.T) {
+	t.Parallel()
+
+	type Nested struct {
+		Val          int
+		NestedValues []struct {
+			NVal int
+		}
+	}
+	type NestedSlices struct {
+		Values []Nested
+	}
+
+	testcases := []struct {
+		name            string
+		maxSize         int
+		decoderInput    func() (dst NestedSlices, src map[string][]string)
+		expectedDecoded NestedSlices
+		expectedErr     MultiError
+	}{
+		{
+			name:    "no error on decoding under max size",
+			maxSize: 10,
+			decoderInput: func() (dst NestedSlices, src map[string][]string) {
+				return dst, map[string][]string{
+					"Values.1.Val":                 {"132"},
+					"Values.1.NestedValues.1.NVal": {"1"},
+					"Values.1.NestedValues.2.NVal": {"2"},
+					"Values.1.NestedValues.3.NVal": {"3"},
+				}
+			},
+			expectedDecoded: NestedSlices{
+				Values: []Nested{
+					{
+						Val:          0,
+						NestedValues: nil,
+					},
+					{
+						Val: 132, NestedValues: []struct{ NVal int }{
+							{NVal: 0},
+							{NVal: 1},
+							{NVal: 2},
+							{NVal: 3},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name:    "error on decoding above max size",
+			maxSize: 1,
+			decoderInput: func() (dst NestedSlices, src map[string][]string) {
+				return dst, map[string][]string{
+					"Values.1.Val":                 {"132"},
+					"Values.1.NestedValues.1.NVal": {"1"},
+					"Values.1.NestedValues.2.NVal": {"2"},
+					"Values.1.NestedValues.3.NVal": {"3"},
+				}
+			},
+			expectedErr: MultiError{
+				"Values.1.NestedValues.2.NVal": errors.New("slice index 2 is larger than the configured maxSize 1"),
+				"Values.1.NestedValues.3.NVal": errors.New("slice index 3 is larger than the configured maxSize 1"),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dec := NewDecoder()
+			dec.MaxSize(tc.maxSize)
+			dst, src := tc.decoderInput()
+			err := dec.Decode(&dst, src)
+
+			if tc.expectedErr != nil {
+				var gotErr MultiError
+				if !errors.As(err, &gotErr) {
+					t.Errorf("decoder error is not of type %T", gotErr)
+				}
+				if !reflect.DeepEqual(gotErr, tc.expectedErr) {
+					t.Errorf("expected %v, got %v", tc.expectedErr, gotErr)
+				}
+			} else {
+				if !reflect.DeepEqual(dst, tc.expectedDecoded) {
+					t.Errorf("expected %v, got %v", tc.expectedDecoded, dst)
+				}
+			}
+		})
+	}
+}
+
+func TestDecoder_SetMaxSize(t *testing.T) {
+
+	t.Run("default maxsize should be equal to given constant", func(t *testing.T) {
+		t.Parallel()
+		dec := NewDecoder()
+		if !reflect.DeepEqual(dec.maxSize, defaultMaxSize) {
+			t.Errorf("unexpected default max size")
+		}
+	})
+
+	t.Run("configured maxsize should be set properly", func(t *testing.T) {
+		t.Parallel()
+		configuredMaxSize := 50
+		limitedMaxSizeDecoder := NewDecoder()
+		limitedMaxSizeDecoder.MaxSize(configuredMaxSize)
+		if !reflect.DeepEqual(limitedMaxSizeDecoder.maxSize, configuredMaxSize) {
+			t.Errorf("invalid decoder maxsize, expected: %d, got: %d",
+				configuredMaxSize, limitedMaxSizeDecoder.maxSize)
+		}
+	})
 }

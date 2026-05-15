@@ -717,6 +717,41 @@ func TestUnexportedField(t *testing.T) {
 	}
 }
 
+// Regression: walking through an unexported pointer field used to panic
+// with "reflect.Value.Set using value obtained using unexported field"
+// because Decoder.decode tried to allocate the pointer before realizing
+// the target was unreachable.
+type s6WithNestedUnexported struct {
+	A string
+	c *struct {
+		X string
+	}
+}
+
+func TestUnexportedPointerFieldNestedPathDoesNotPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Decode panicked on unexported pointer path: %v", r)
+		}
+	}()
+	dec := NewDecoder()
+	dec.IgnoreUnknownKeys(true)
+	s := &s6WithNestedUnexported{}
+	err := dec.Decode(s, map[string][]string{
+		"A":   {"hi"},
+		"c.X": {"should not panic"},
+	})
+	if err != nil {
+		t.Fatalf("Decode returned an error: %v", err)
+	}
+	if s.A != "hi" {
+		t.Errorf("A: got %q, want %q", s.A, "hi")
+	}
+	if s.c != nil {
+		t.Errorf("c expected to be left nil, got %+v", s.c)
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 type S7 struct {

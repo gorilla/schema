@@ -279,6 +279,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
 			if v.IsNil() {
+				// Allocating into an unexported pointer panics; the path
+				// targets a field we can't set anyway, so bail early.
+				if !v.CanSet() {
+					return nil
+				}
 				v.Set(reflect.New(v.Type().Elem()))
 			}
 			v = v.Elem()
@@ -288,7 +293,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		if v.Type().Kind() == reflect.Struct {
 			for i := 0; i < v.NumField(); i++ {
 				field := v.Field(i)
-				if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
+				if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous && field.CanSet() {
 					field.Set(reflect.New(field.Type().Elem()))
 				}
 			}

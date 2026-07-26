@@ -130,7 +130,11 @@ func (c *cache) create(t reflect.Type, parentAlias string) *structInfo {
 	info := &structInfo{}
 	var anonymousInfos []*structInfo
 	for i := 0; i < t.NumField(); i++ {
-		if f := c.createField(t.Field(i), parentAlias); f != nil {
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		if f := c.createField(field, parentAlias); f != nil {
 			info.fields = append(info.fields, f)
 			if ft := indirectType(f.typ); ft.Kind() == reflect.Struct && f.isAnonymous {
 				anonymousInfos = append(anonymousInfos, c.create(ft, f.canonicalAlias))

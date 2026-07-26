@@ -87,7 +87,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		name, opts := fieldAlias(field, e.cache.tag)
 		if name == "-" {
 			continue
 		}

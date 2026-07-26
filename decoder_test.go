@@ -708,7 +708,9 @@ func TestUnexportedField(t *testing.T) {
 		"id": {"identifier"},
 	}
 	s := &S6{}
-	err := NewDecoder().Decode(s, data)
+	decoder := NewDecoder()
+	decoder.IgnoreUnknownKeys(true)
+	err := decoder.Decode(s, data)
 	if err != nil {
 		t.Fatalf("Failed to decode: %v", err)
 	}

@@ -67,7 +67,7 @@ func (c *cache) parsePath(p string, t reflect.Type) ([]pathPart, error) {
 			// Parse a special case: slices of structs.
 			// i+1 must be the slice index.
 			//
-			// Now that struct can implements TextUnmarshaler interface,
+			// Now that struct can implement the TextUnmarshaler interface,
 			// we don't need to force the struct's fields to appear in the path.
 			// So checking i+2 is not necessary anymore.
 			i++

@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// Converter is a function that converts a string value to a reflect.Value.
 type Converter func(string) reflect.Value
 
 var (

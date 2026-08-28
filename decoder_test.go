@@ -2527,3 +2527,32 @@ func TestDecoder_SetMaxSize(t *testing.T) {
 		}
 	})
 }
+
+func TestDecodeIgnoresGorillaCSRFToken(t *testing.T) {
+	type Form struct {
+		Name string
+	}
+	var s Form
+	err := NewDecoder().Decode(&s, map[string][]string{
+		"Name":               {"alice"},
+		"gorilla.csrf.Token": {"abc.def.ghi"},
+	})
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if s.Name != "alice" {
+		t.Fatalf("Name: got %q, want alice", s.Name)
+	}
+}
+
+func TestDecodeStillRejectsUnknownDottedKeys(t *testing.T) {
+	type Form struct {
+		Name string
+	}
+	err := NewDecoder().Decode(&Form{}, map[string][]string{
+		"not.a.field": {"x"},
+	})
+	if err == nil {
+		t.Fatal("expected unknown key error")
+	}
+}

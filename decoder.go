@@ -14,6 +14,9 @@ import (
 
 const (
 	defaultMaxSize = 16000
+	// Form field name used by gorilla/csrf. Periods would otherwise be parsed
+	// as a nested struct path.
+	gorillaCSRFTokenKey = "gorilla.csrf.Token"
 )
 
 // NewDecoder returns a new Decoder.
@@ -88,6 +91,9 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	t := v.Type()
 	errors := MultiError{}
 	for path, values := range src {
+		if path == gorillaCSRFTokenKey {
+			continue
+		}
 		if parts, err := d.cache.parsePath(path, t); err == nil {
 			if err = d.decode(v, path, parts, values); err != nil {
 				errors[path] = err

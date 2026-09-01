@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -192,7 +194,7 @@ func isPointerToStruct(v reflect.Value) bool {
 //
 // src is the source map for decoding, we use it here to see if those required fields are included in src
 func (d *Decoder) checkRequired(t reflect.Type, src map[string][]string) MultiError {
-	m, errs := d.findRequiredFields(t, "", "")
+	m, errs := d.findRequiredFields(t, "", "", src)
 	for key, fields := range m {
 		if isEmptyFields(fields, src) {
 			errs[key] = EmptyFieldError{Key: key}
@@ -207,7 +209,7 @@ func (d *Decoder) checkRequired(t reflect.Type, src map[string][]string) MultiEr
 // for nested struct fields. canonicalPrefix is a complete path which never omits
 // any embedded struct fields. searchPrefix is a user-friendly path which may omit
 // some embedded struct fields to point promoted fields.
-func (d *Decoder) findRequiredFields(t reflect.Type, canonicalPrefix, searchPrefix string) (map[string][]fieldWithPrefix, MultiError) {
+func (d *Decoder) findRequiredFields(t reflect.Type, canonicalPrefix, searchPrefix string, src map[string][]string) (map[string][]fieldWithPrefix, MultiError) {
 	struc := d.cache.get(t)
 	if struc == nil {
 		// unexpect, cache.get never return nil
@@ -220,11 +222,31 @@ func (d *Decoder) findRequiredFields(t reflect.Type, canonicalPrefix, searchPref
 		if f.typ.Kind() == reflect.Struct {
 			fcprefix := canonicalPrefix + f.canonicalAlias + "."
 			for _, fspath := range f.paths(searchPrefix) {
-				fm, ferrs := d.findRequiredFields(f.typ, fcprefix, fspath+".")
+				fm, ferrs := d.findRequiredFields(f.typ, fcprefix, fspath+".", src)
 				for key, fields := range fm {
 					m[key] = append(m[key], fields...)
 				}
 				errs.merge(ferrs)
+			}
+		}
+		if f.isSliceOfStructs {
+			elemType := f.typ.Elem()
+			if elemType.Kind() == reflect.Ptr {
+				elemType = elemType.Elem()
+			}
+			if elemType.Kind() != reflect.Struct {
+				continue
+			}
+			for _, idx := range sliceIndexes(src, canonicalPrefix+f.canonicalAlias) {
+				idxStr := strconv.Itoa(idx)
+				fcprefix := canonicalPrefix + f.canonicalAlias + "." + idxStr + "."
+				for _, fspath := range f.paths(searchPrefix) {
+					fm, ferrs := d.findRequiredFields(elemType, fcprefix, fspath+"."+idxStr+".", src)
+					for key, fields := range fm {
+						m[key] = append(m[key], fields...)
+					}
+					errs.merge(ferrs)
+				}
 			}
 		}
 		if f.isRequired {
@@ -236,6 +258,33 @@ func (d *Decoder) findRequiredFields(t reflect.Type, canonicalPrefix, searchPref
 		}
 	}
 	return m, errs
+}
+
+// sliceIndexes returns the numeric indices present in src under prefix
+// (for example prefix "bars" matches keys "bars.0.baz" -> 0).
+func sliceIndexes(src map[string][]string, prefix string) []int {
+	seen := map[int]struct{}{}
+	p := prefix + "."
+	for key := range src {
+		if !strings.HasPrefix(key, p) {
+			continue
+		}
+		rest := key[len(p):]
+		if i := strings.IndexByte(rest, '.'); i >= 0 {
+			rest = rest[:i]
+		}
+		n, err := strconv.Atoi(rest)
+		if err != nil || n < 0 {
+			continue
+		}
+		seen[n] = struct{}{}
+	}
+	out := make([]int, 0, len(seen))
+	for n := range seen {
+		out = append(out, n)
+	}
+	sort.Ints(out)
+	return out
 }
 
 type fieldWithPrefix struct {

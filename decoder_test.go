@@ -1566,6 +1566,24 @@ func TestRequiredField(t *testing.T) {
 	}
 	v["f"] = []string{"nonempty"}
 
+	type Bar struct {
+		Baz string `schema:"baz,required"`
+		Qux string `schema:"qux"`
+	}
+	type Foo struct {
+		Field string `schema:"field,required"`
+		Bars  []Bar  `schema:"bars"`
+	}
+	var foo Foo
+	err = NewDecoder().Decode(&foo, map[string][]string{
+		"field":      {"foo"},
+		"bars.0.qux": {"qux"},
+	})
+	if err == nil {
+		t.Errorf("error nil, bars.0.baz is empty expect")
+		return
+	}
+
 	// b.c type int with empty string
 	v["b.c"] = []string{""}
 	err = NewDecoder().Decode(&a, v)

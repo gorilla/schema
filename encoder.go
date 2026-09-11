@@ -75,6 +75,27 @@ func isZero(v reflect.Value) bool {
 	return v.Interface() == z.Interface()
 }
 
+func isOmitZero(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+	type zero interface {
+		IsZero() bool
+	}
+	if v.Type().Implements(reflect.TypeOf((*zero)(nil)).Elem()) {
+		return v.MethodByName("IsZero").Call([]reflect.Value{})[0].Interface().(bool)
+	}
+	if v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return true
+		}
+		if v.Elem().Type().Implements(reflect.TypeOf((*zero)(nil)).Elem()) {
+			return v.Elem().MethodByName("IsZero").Call([]reflect.Value{})[0].Interface().(bool)
+		}
+	}
+	return v.IsZero()
+}
+
 func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -92,6 +113,13 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
+		if opts.Contains("omitzero") && isOmitZero(v.Field(i)) {
+			continue
+		}
+		if opts.Contains("omitempty") && isZero(v.Field(i)) {
+			continue
+		}
+
 		// Encode struct pointer types if the field is a valid pointer and a struct.
 		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
 			err := e.encode(v.Field(i).Elem(), dst)
@@ -106,7 +134,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
 			value := encFunc(v.Field(i))
-			if opts.Contains("omitempty") && isZero(v.Field(i)) {
+			if (opts.Contains("omitempty") && isZero(v.Field(i))) || (opts.Contains("omitzero") && isOmitZero(v.Field(i))) {
 				continue
 			}
 
@@ -132,7 +160,7 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 
 		// Encode a slice.
-		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
+		if v.Field(i).Len() == 0 && (opts.Contains("omitempty") || opts.Contains("omitzero")) {
 			continue
 		}
 

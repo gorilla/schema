@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -522,4 +523,33 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valsLength(t, 2, vals)
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
+}
+
+func TestOmitZeroTime(t *testing.T) {
+	type S struct {
+		When time.Time `schema:"when,omitzero"`
+		Name string    `schema:"name"`
+	}
+	e := NewEncoder()
+	e.RegisterEncoder(time.Time{}, func(value reflect.Value) string {
+		return value.Interface().(time.Time).Format(time.RFC3339Nano)
+	})
+	vals := make(url.Values)
+	if err := e.Encode(S{Name: "a"}, vals); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := vals["when"]; ok {
+		t.Fatalf("zero time should be omitted, got %#v", vals)
+	}
+	if vals.Get("name") != "a" {
+		t.Fatalf("name=%q", vals.Get("name"))
+	}
+	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
+	vals = make(url.Values)
+	if err := e.Encode(S{Name: "a", When: now}, vals); err != nil {
+		t.Fatal(err)
+	}
+	if vals.Get("when") != now.Format(time.RFC3339Nano) {
+		t.Fatalf("when=%q", vals.Get("when"))
+	}
 }

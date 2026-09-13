@@ -52,7 +52,7 @@ func TestFilled(t *testing.T) {
 	valExists(t, "f07", "seven", vals)
 	valExists(t, "f08", "8", vals)
 	valExists(t, "f09", "1.618000", vals)
-	valExists(t, "F12", "12", vals)
+	valExists(t, "F11.F12", "12", vals)
 
 	emptyErr := MultiError{}
 	if errs.Error() == emptyErr.Error() {
@@ -390,7 +390,7 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valNotExists(t, "f04", vals)
 	valNotExists(t, "f05", vals)
 	valNotExists(t, "f06", vals)
-	valExists(t, "f0601", "test", vals)
+	valExists(t, "f07.f0601", "test", vals)
 	valNotExists(t, "f08", vals)
 	valsExist(t, "f09", []string{"test"}, vals)
 }
@@ -412,9 +412,39 @@ func TestStructPointer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to encode: %v", err)
 	}
-	valExists(t, "F12", "2", vals)
+	valExists(t, "F01.F12", "2", vals)
 	valExists(t, "F02", "null", vals)
 	valNotExists(t, "F03", vals)
+}
+
+func TestNamedNestedStructRoundtrip(t *testing.T) {
+	type Bar struct {
+		A string `schema:"a"`
+		B bool   `schema:"b"`
+	}
+	type Foo struct {
+		X string `schema:"x"`
+		Y Bar    `schema:"y"`
+	}
+
+	src := Foo{X: "hello", Y: Bar{A: "world", B: true}}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "x", "hello", vals)
+	valExists(t, "y.a", "world", vals)
+	valExists(t, "y.b", "true", vals)
+	valNotExists(t, "a", vals)
+	valNotExists(t, "b", vals)
+
+	var dst Foo
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst != src {
+		t.Fatalf("roundtrip: got %+v want %+v", dst, src)
+	}
 }
 
 func TestRegisterEncoderCustomArrayType(t *testing.T) {

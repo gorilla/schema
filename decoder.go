@@ -351,11 +351,18 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 			}
 		}
 
+		// Empty form values must still occupy a slice slot. Dropping them
+		// shifts later elements and breaks parallel fields (issue #215).
+		emptyItem := func() reflect.Value {
+			if isPtrElem {
+				return reflect.Zero(t.Elem())
+			}
+			return reflect.Zero(elemT)
+		}
+
 		for key, value := range values {
 			if value == "" {
-				if d.zeroEmpty {
-					items = append(items, reflect.Zero(elemT))
-				}
+				items = append(items, emptyItem())
 			} else if m.IsValid {
 				u := reflect.New(elemT)
 				if m.IsSliceElementPtr {
@@ -391,9 +398,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 					values := strings.Split(value, ",")
 					for _, value := range values {
 						if value == "" {
-							if d.zeroEmpty {
-								items = append(items, reflect.Zero(elemT))
-							}
+							items = append(items, emptyItem())
 						} else if item := conv(value); item.IsValid() {
 							if isPtrElem {
 								ptr := reflect.New(elemT)

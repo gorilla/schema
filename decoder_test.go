@@ -676,8 +676,39 @@ func TestEmptyValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode: %v", err)
 	}
-	if len(s.F01) != 1 {
-		t.Errorf("Expected 1 values in F01")
+	if len(s.F01) != 2 {
+		t.Errorf("Expected 2 values in F01, got %d", len(s.F01))
+	}
+	if s.F01[0] != "" || s.F01[1] != "foo" {
+		t.Errorf("F01: got %#v, want []string{\"\", \"foo\"}", s.F01)
+	}
+}
+
+func TestSliceKeepsEmptyValues(t *testing.T) {
+	type Document struct {
+		ID      []int64   `schema:"id"`
+		RowID   []int64   `schema:"row_id"`
+		RowName []string  `schema:"row_name"`
+		Ptrs    []*string `schema:"ptrs"`
+	}
+	data := map[string][]string{
+		"id":       {"1", "", "15"},
+		"row_id":   {"10", "20", "30"},
+		"row_name": {"a", "", "c"},
+		"ptrs":     {"x", "", "z"},
+	}
+	var doc Document
+	if err := NewDecoder().Decode(&doc, data); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.ID) != 3 || doc.ID[0] != 1 || doc.ID[1] != 0 || doc.ID[2] != 15 {
+		t.Errorf("ID: got %#v, want [1 0 15]", doc.ID)
+	}
+	if len(doc.RowName) != 3 || doc.RowName[0] != "a" || doc.RowName[1] != "" || doc.RowName[2] != "c" {
+		t.Errorf("RowName: got %#v", doc.RowName)
+	}
+	if len(doc.Ptrs) != 3 || doc.Ptrs[0] == nil || *doc.Ptrs[0] != "x" || doc.Ptrs[1] != nil || doc.Ptrs[2] == nil || *doc.Ptrs[2] != "z" {
+		t.Errorf("Ptrs: got %#v", doc.Ptrs)
 	}
 }
 

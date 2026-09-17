@@ -412,6 +412,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 							}
 						}
 					}
+				} else if elemT.Kind() == reflect.Uint8 && !isPtrElem && len(values) == 1 {
+					// []byte / []uint8: a single non-numeric form value is the
+					// raw bytes, not a list of numbers (gorilla/schema#191).
+					v.Set(reflect.ValueOf([]byte(value)))
+					return nil
 				} else {
 					return ConversionError{
 						Key:   path,

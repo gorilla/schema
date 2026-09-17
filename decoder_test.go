@@ -1275,6 +1275,41 @@ func TestRegisterConverter(t *testing.T) {
 }
 
 // Issue #40
+func TestDecodeByteSliceFromString(t *testing.T) {
+	type demo struct {
+		Test1 []byte  `schema:"test1"`
+		Test2 []uint8 `schema:"test2"`
+	}
+	var d demo
+	err := NewDecoder().Decode(&d, map[string][]string{
+		"test1": {"anyvalue"},
+		"test2": {"hello"},
+	})
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if got, want := string(d.Test1), "anyvalue"; got != want {
+		t.Errorf("[]byte: got %q, want %q", got, want)
+	}
+	if got, want := string(d.Test2), "hello"; got != want {
+		t.Errorf("[]uint8: got %q, want %q", got, want)
+	}
+}
+
+func TestDecodeUint8SliceStillNumeric(t *testing.T) {
+	type demo struct {
+		E []uint8 `schema:"e"`
+	}
+	var d demo
+	err := NewDecoder().Decode(&d, map[string][]string{"e": {"2", "3"}})
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(d.E) != 2 || d.E[0] != 2 || d.E[1] != 3 {
+		t.Errorf("numeric []uint8: got %v, want [2 3]", d.E)
+	}
+}
+
 func TestRegisterConverterSlice(t *testing.T) {
 	decoder := NewDecoder()
 	decoder.RegisterConverter([]string{}, func(input string) reflect.Value {

@@ -1,10 +1,16 @@
 package schema
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
+)
+
+var (
+	textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	stringerType      = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
 )
 
 type encoderFunc func(reflect.Value) string
@@ -93,7 +99,10 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		}
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
-		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
+		// Skip recursion when the pointer or the struct implements TextMarshaler or Stringer.
+		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) &&
+			interfaceEncoder(v.Field(i).Type()) == nil &&
+			interfaceEncoder(v.Field(i).Elem().Type()) == nil {
 			err := e.encode(v.Field(i).Elem(), dst)
 			if err != nil {
 				errors[v.Field(i).Elem().Type().String()] = err
@@ -157,6 +166,9 @@ func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {
 	if f, ok := reg[t]; ok {
 		return f
 	}
+	if f := interfaceEncoder(t); f != nil {
+		return f
+	}
 
 	switch t.Kind() {
 	case reflect.Bool:
@@ -182,6 +194,78 @@ func typeEncoder(t reflect.Type, reg map[reflect.Type]encoderFunc) encoderFunc {
 	default:
 		return nil
 	}
+}
+
+func interfaceEncoder(t reflect.Type) encoderFunc {
+	if t == nil {
+		return nil
+	}
+	if t.Implements(textMarshalerType) {
+		return encodeTextMarshaler
+	}
+	if t.Kind() != reflect.Ptr && reflect.PointerTo(t).Implements(textMarshalerType) {
+		return encodeTextMarshaler
+	}
+	if t.Implements(stringerType) {
+		return encodeStringer
+	}
+	if t.Kind() != reflect.Ptr && reflect.PointerTo(t).Implements(stringerType) {
+		return encodeStringer
+	}
+	return nil
+}
+
+func asInterface(v reflect.Value, iface reflect.Type) interface{} {
+	if !v.IsValid() {
+		return nil
+	}
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return nil
+	}
+	if v.Type().Implements(iface) && v.CanInterface() {
+		return v.Interface()
+	}
+	if v.Kind() != reflect.Ptr {
+		if v.CanAddr() {
+			p := v.Addr()
+			if p.Type().Implements(iface) && p.CanInterface() {
+				return p.Interface()
+			}
+		} else if v.CanInterface() {
+			p := reflect.New(v.Type())
+			p.Elem().Set(v)
+			if p.Type().Implements(iface) {
+				return p.Interface()
+			}
+		}
+	}
+	return nil
+}
+
+func encodeTextMarshaler(v reflect.Value) string {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return "null"
+	}
+	m, ok := asInterface(v, textMarshalerType).(encoding.TextMarshaler)
+	if !ok || m == nil {
+		return ""
+	}
+	b, err := m.MarshalText()
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func encodeStringer(v reflect.Value) string {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return "null"
+	}
+	s, ok := asInterface(v, stringerType).(fmt.Stringer)
+	if !ok || s == nil {
+		return ""
+	}
+	return s.String()
 }
 
 func encodeBool(v reflect.Value) string {

@@ -489,6 +489,98 @@ func TestRegisterEncoderStructIsZero(t *testing.T) {
 	}
 }
 
+type hexColor struct{ n uint32 }
+
+func (c hexColor) MarshalText() ([]byte, error) {
+	return []byte(fmt.Sprintf("#%06x", c.n)), nil
+}
+
+type pathName string
+
+func (p pathName) String() string { return "/" + string(p) }
+
+type bothMarshaler string
+
+func (b bothMarshaler) MarshalText() ([]byte, error) { return []byte("text:" + string(b)), nil }
+func (b bothMarshaler) String() string               { return "string:" + string(b) }
+
+type ptrOnlyColor struct{ n uint32 }
+
+func (c *ptrOnlyColor) MarshalText() ([]byte, error) {
+	if c == nil {
+		return []byte("null"), nil
+	}
+	return []byte(fmt.Sprintf("#%06x", c.n)), nil
+}
+
+func TestEncoderTextMarshaler(t *testing.T) {
+	type S struct {
+		Color hexColor      `schema:"color"`
+		When  time.Time     `schema:"when"`
+		Both  bothMarshaler `schema:"both"`
+		Ptr   *hexColor     `schema:"ptr"`
+		Nil   *hexColor     `schema:"nilptr"`
+	}
+	when := time.Date(2020, 8, 4, 13, 30, 1, 0, time.UTC)
+	c := hexColor{0xe18477}
+	src := S{
+		Color: hexColor{0xe18477},
+		When:  when,
+		Both:  "x",
+		Ptr:   &c,
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "color", "#e18477", vals)
+	valExists(t, "when", "2020-08-04T13:30:01Z", vals)
+	valExists(t, "both", "text:x", vals)
+	valExists(t, "ptr", "#e18477", vals)
+	valExists(t, "nilptr", "null", vals)
+}
+
+func TestEncoderStringer(t *testing.T) {
+	type S struct {
+		Path  pathName   `schema:"path"`
+		Paths []pathName `schema:"paths"`
+		Ptr   *pathName  `schema:"ptr"`
+	}
+	p := pathName("home")
+	src := S{Path: "tmp", Paths: []pathName{"a", "b"}, Ptr: &p}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "path", "/tmp", vals)
+	valsExist(t, "paths", []string{"/a", "/b"}, vals)
+	valExists(t, "ptr", "/home", vals)
+}
+
+func TestEncoderTextMarshalerPointerReceiver(t *testing.T) {
+	type S struct {
+		C ptrOnlyColor `schema:"c"`
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(S{C: ptrOnlyColor{0x00ff00}}, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "c", "#00ff00", vals)
+}
+
+func TestRegisterEncoderOverridesTextMarshaler(t *testing.T) {
+	type S struct {
+		Color hexColor `schema:"color"`
+	}
+	encoder := NewEncoder()
+	encoder.RegisterEncoder(hexColor{}, func(reflect.Value) string { return "custom" })
+	vals := map[string][]string{}
+	if err := encoder.Encode(S{Color: hexColor{1}}, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "color", "custom", vals)
+}
+
 func TestRegisterEncoderWithPtrType(t *testing.T) {
 	type CustomTime struct {
 		time time.Time

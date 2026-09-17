@@ -154,10 +154,10 @@ func TestSlices(t *testing.T) {
 	type oneAsWord int
 	ones := []oneAsWord{1, 2}
 	s1 := &struct {
-		ones     []oneAsWord `schema:"ones"`
-		ints     []int       `schema:"ints"`
-		nonempty []int       `schema:"nonempty"`
-		empty    []int       `schema:"empty,omitempty"`
+		Ones     []oneAsWord `schema:"ones"`
+		Ints     []int       `schema:"ints"`
+		Nonempty []int       `schema:"nonempty"`
+		Empty    []int       `schema:"empty,omitempty"`
 	}{ones, []int{1, 1}, []int{}, []int{}}
 	vals := make(map[string][]string)
 
@@ -254,8 +254,8 @@ func TestEncoderOrder(t *testing.T) {
 	type builtinEncoderSimpleOverridden int
 	type builtinEncoderSlice []int
 	type builtinEncoderSliceOverridden []int
-	type builtinEncoderStruct struct{ nr int }
-	type builtinEncoderStructOverridden struct{ nr int }
+	type builtinEncoderStruct struct{ Nr int }
+	type builtinEncoderStructOverridden struct{ Nr int }
 
 	s1 := &struct {
 		builtinEncoderSimple           `schema:"simple"`
@@ -269,8 +269,8 @@ func TestEncoderOrder(t *testing.T) {
 		1,
 		[]int{2},
 		[]int{2},
-		builtinEncoderStruct{3},
-		builtinEncoderStructOverridden{3},
+		builtinEncoderStruct{Nr: 3},
+		builtinEncoderStructOverridden{Nr: 3},
 	}
 	v1 := make(map[string][]string)
 
@@ -288,7 +288,7 @@ func TestEncoderOrder(t *testing.T) {
 	valExists(t, "simple_overridden", "one", v1)
 	valExists(t, "slice", "2", v1)
 	valExists(t, "slice_overridden", "two", v1)
-	valExists(t, "nr", "3", v1)
+	valExists(t, "Nr", "3", v1)
 	valExists(t, "struct_overridden", "three", v1)
 }
 

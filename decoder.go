@@ -119,6 +119,9 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	if v.Type().Kind() == reflect.Struct {
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
+			if !field.CanSet() {
+				continue
+			}
 			if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
 				field.Set(reflect.New(field.Type().Elem()))
 			}
@@ -126,7 +129,14 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 	}
 
 	for _, f := range struc.fields {
-		vCurrent := v.FieldByName(f.name)
+		sf, ok := t.FieldByName(f.name)
+		if !ok {
+			continue
+		}
+		vCurrent, ok := fieldByIndexSafe(v, sf.Index)
+		if !ok {
+			continue
+		}
 
 		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
 			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))
@@ -273,6 +283,26 @@ func isEmpty(t reflect.Type, value []string) bool {
 	return false
 }
 
+// fieldByIndexSafe walks index without panicking on a nil embedded pointer.
+func fieldByIndexSafe(v reflect.Value, index []int) (reflect.Value, bool) {
+	for _, i := range index {
+		if v.Kind() == reflect.Ptr {
+			if v.IsNil() {
+				return reflect.Value{}, false
+			}
+			v = v.Elem()
+		}
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}, false
+		}
+		v = v.Field(i)
+		if !v.IsValid() {
+			return reflect.Value{}, false
+		}
+	}
+	return v, true
+}
+
 // decode fills a struct field using a parsed path.
 func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values []string) error {
 	// Get the field walking the struct fields by index.
@@ -288,6 +318,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		if v.Type().Kind() == reflect.Struct {
 			for i := 0; i < v.NumField(); i++ {
 				field := v.Field(i)
+				if !field.CanSet() {
+					continue
+				}
 				if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
 					field.Set(reflect.New(field.Type().Elem()))
 				}

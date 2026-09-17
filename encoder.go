@@ -66,11 +66,18 @@ func isZero(v reflect.Value) bool {
 		}
 		z := true
 		for i := 0; i < v.NumField(); i++ {
+			sf := v.Type().Field(i)
+			if !sf.IsExported() && !sf.Anonymous {
+				continue
+			}
 			z = z && isZero(v.Field(i))
 		}
 		return z
 	}
 	// Compare other types directly:
+	if !v.CanInterface() {
+		return v.IsZero()
+	}
 	z := reflect.Zero(v.Type())
 	return v.Interface() == z.Interface()
 }
@@ -87,7 +94,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		sf := t.Field(i)
+		if !sf.IsExported() && !sf.Anonymous {
+			continue
+		}
+		name, opts := fieldAlias(sf, e.cache.tag)
 		if name == "-" {
 			continue
 		}

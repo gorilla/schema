@@ -76,6 +76,10 @@ func isZero(v reflect.Value) bool {
 }
 
 func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
+	return e.encodeWithPrefix(v, dst, "")
+}
+
+func (e *Encoder) encodeWithPrefix(v reflect.Value, dst map[string][]string, prefix string) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -87,58 +91,72 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		sf := t.Field(i)
+		name, opts := fieldAlias(sf, e.cache.tag)
 		if name == "-" {
 			continue
 		}
+		key := name
+		if prefix != "" {
+			key = prefix + "." + name
+		}
+
+		field := v.Field(i)
+
+		// Named nested structs keep a dotted prefix so Encode/Decode round-trip.
+		// Anonymous (embedded) structs stay flattened, matching the decoder.
+		nestedPrefix := prefix
+		if !sf.Anonymous {
+			nestedPrefix = key
+		}
 
 		// Encode struct pointer types if the field is a valid pointer and a struct.
-		if isValidStructPointer(v.Field(i)) && !e.hasCustomEncoder(v.Field(i).Type()) {
-			err := e.encode(v.Field(i).Elem(), dst)
+		if isValidStructPointer(field) && !e.hasCustomEncoder(field.Type()) {
+			err := e.encodeWithPrefix(field.Elem(), dst, nestedPrefix)
 			if err != nil {
-				errors[v.Field(i).Elem().Type().String()] = err
+				errors[field.Elem().Type().String()] = err
 			}
 			continue
 		}
 
-		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
+		encFunc := typeEncoder(field.Type(), e.regenc)
 
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
-			value := encFunc(v.Field(i))
-			if opts.Contains("omitempty") && isZero(v.Field(i)) {
+			value := encFunc(field)
+			if opts.Contains("omitempty") && isZero(field) {
 				continue
 			}
 
-			dst[name] = append(dst[name], value)
+			dst[key] = append(dst[key], value)
 			continue
 		}
 
-		if v.Field(i).Type().Kind() == reflect.Struct {
-			err := e.encode(v.Field(i), dst)
+		if field.Type().Kind() == reflect.Struct {
+			err := e.encodeWithPrefix(field, dst, nestedPrefix)
 			if err != nil {
-				errors[v.Field(i).Type().String()] = err
+				errors[field.Type().String()] = err
 			}
 			continue
 		}
 
-		if v.Field(i).Type().Kind() == reflect.Slice {
-			encFunc = typeEncoder(v.Field(i).Type().Elem(), e.regenc)
+		if field.Type().Kind() == reflect.Slice {
+			encFunc = typeEncoder(field.Type().Elem(), e.regenc)
 		}
 
 		if encFunc == nil {
-			errors[v.Field(i).Type().String()] = fmt.Errorf("schema: encoder not found for %v", v.Field(i))
+			errors[field.Type().String()] = fmt.Errorf("schema: encoder not found for %v", field)
 			continue
 		}
 
 		// Encode a slice.
-		if v.Field(i).Len() == 0 && opts.Contains("omitempty") {
+		if field.Len() == 0 && opts.Contains("omitempty") {
 			continue
 		}
 
-		dst[name] = []string{}
-		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+		dst[key] = []string{}
+		for j := 0; j < field.Len(); j++ {
+			dst[key] = append(dst[key], encFunc(field.Index(j)))
 		}
 	}
 

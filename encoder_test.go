@@ -52,7 +52,7 @@ func TestFilled(t *testing.T) {
 	valExists(t, "f07", "seven", vals)
 	valExists(t, "f08", "8", vals)
 	valExists(t, "f09", "1.618000", vals)
-	valExists(t, "F12", "12", vals)
+	valExists(t, "F11.F12", "12", vals)
 
 	emptyErr := MultiError{}
 	if errs.Error() == emptyErr.Error() {
@@ -390,7 +390,7 @@ func TestEncoderWithOmitempty(t *testing.T) {
 	valNotExists(t, "f04", vals)
 	valNotExists(t, "f05", vals)
 	valNotExists(t, "f06", vals)
-	valExists(t, "f0601", "test", vals)
+	valExists(t, "f07.f0601", "test", vals)
 	valNotExists(t, "f08", vals)
 	valsExist(t, "f09", []string{"test"}, vals)
 }
@@ -412,7 +412,7 @@ func TestStructPointer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to encode: %v", err)
 	}
-	valExists(t, "F12", "2", vals)
+	valExists(t, "F01.F12", "2", vals)
 	valExists(t, "F02", "null", vals)
 	valNotExists(t, "F03", vals)
 }
@@ -522,4 +522,226 @@ func TestRegisterEncoderWithPtrType(t *testing.T) {
 	valsLength(t, 2, vals)
 	valExists(t, "DateStart", ss.DateStart.time.String(), vals)
 	valExists(t, "DateEnd", "", vals)
+}
+
+func TestNamedNestedStructRoundtrip(t *testing.T) {
+	type Bar struct {
+		A string `schema:"a"`
+		B bool   `schema:"b"`
+	}
+	type Foo struct {
+		X string `schema:"x"`
+		Y Bar    `schema:"y"`
+	}
+
+	src := Foo{
+		X: "hello",
+		Y: Bar{
+			A: "world",
+			B: true,
+		},
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "x", "hello", vals)
+	valExists(t, "y.a", "world", vals)
+	valExists(t, "y.b", "true", vals)
+	valNotExists(t, "a", vals)
+	valNotExists(t, "b", vals)
+
+	var dst Foo
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst != src {
+		t.Fatalf("roundtrip: got %+v want %+v", dst, src)
+	}
+}
+
+func TestNamedNestedStructPointerRoundtrip(t *testing.T) {
+	type Bar struct {
+		A string `schema:"a"`
+		B int    `schema:"b"`
+	}
+	type Foo struct {
+		X string `schema:"x"`
+		Y *Bar   `schema:"y"`
+	}
+
+	src := Foo{
+		X: "hello",
+		Y: &Bar{
+			A: "pointer_world",
+			B: 42,
+		},
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "x", "hello", vals)
+	valExists(t, "y.a", "pointer_world", vals)
+	valExists(t, "y.b", "42", vals)
+
+	var dst Foo
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst.X != src.X || dst.Y == nil || *dst.Y != *src.Y {
+		t.Fatalf("roundtrip pointer: got %+v want %+v", dst, src)
+	}
+}
+
+func TestMultiLevelNestedStructRoundtrip(t *testing.T) {
+	type Level3 struct {
+		C string `schema:"c"`
+	}
+	type Level2 struct {
+		B Level3 `schema:"b"`
+	}
+	type Level1 struct {
+		A Level2 `schema:"a"`
+	}
+
+	src := Level1{
+		A: Level2{
+			B: Level3{
+				C: "deep",
+			},
+		},
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "a.b.c", "deep", vals)
+	valNotExists(t, "b.c", vals)
+	valNotExists(t, "c", vals)
+
+	var dst Level1
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst != src {
+		t.Fatalf("roundtrip multi-level: got %+v want %+v", dst, src)
+	}
+}
+
+func TestEmbeddedAndNamedNestedStructRoundtrip(t *testing.T) {
+	type Leaf struct {
+		Val string `schema:"val"`
+	}
+	type NamedInner struct {
+		Leaf Leaf `schema:"leaf"`
+	}
+	type OuterWithEmbedded struct {
+		NamedInner
+		Top string `schema:"top"`
+	}
+
+	src1 := OuterWithEmbedded{
+		NamedInner: NamedInner{
+			Leaf: Leaf{Val: "from_embedded_named"},
+		},
+		Top: "top_val",
+	}
+	vals1 := map[string][]string{}
+	if err := NewEncoder().Encode(src1, vals1); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "leaf.val", "from_embedded_named", vals1)
+	valExists(t, "top", "top_val", vals1)
+
+	var dst1 OuterWithEmbedded
+	if err := NewDecoder().Decode(&dst1, vals1); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst1 != src1 {
+		t.Fatalf("roundtrip embedded outer: got %+v want %+v", dst1, src1)
+	}
+
+	type InnerEmbed struct {
+		Val string `schema:"val"`
+	}
+	type NamedMiddle struct {
+		InnerEmbed
+	}
+	type OuterWithNamed struct {
+		Mid NamedMiddle `schema:"mid"`
+	}
+
+	src2 := OuterWithNamed{
+		Mid: NamedMiddle{
+			InnerEmbed: InnerEmbed{Val: "from_named_embed"},
+		},
+	}
+	vals2 := map[string][]string{}
+	if err := NewEncoder().Encode(src2, vals2); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "mid.val", "from_named_embed", vals2)
+
+	var dst2 OuterWithNamed
+	if err := NewDecoder().Decode(&dst2, vals2); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst2 != src2 {
+		t.Fatalf("roundtrip named with embedded: got %+v want %+v", dst2, src2)
+	}
+}
+
+func TestNestedStructWithoutTagsRoundtrip(t *testing.T) {
+	type Child struct {
+		Name string
+	}
+	type Parent struct {
+		Child Child
+	}
+
+	src := Parent{
+		Child: Child{Name: "alice"},
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valExists(t, "Child.Name", "alice", vals)
+
+	var dst Parent
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if dst != src {
+		t.Fatalf("roundtrip untagged: got %+v want %+v", dst, src)
+	}
+}
+
+func TestNestedStructWithSliceRoundtrip(t *testing.T) {
+	type InnerSlice struct {
+		Items []string `schema:"items"`
+	}
+	type OuterSlice struct {
+		Inner InnerSlice `schema:"inner"`
+	}
+
+	src := OuterSlice{
+		Inner: InnerSlice{
+			Items: []string{"first", "second"},
+		},
+	}
+	vals := map[string][]string{}
+	if err := NewEncoder().Encode(src, vals); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	valsExist(t, "inner.items", []string{"first", "second"}, vals)
+
+	var dst OuterSlice
+	if err := NewDecoder().Decode(&dst, vals); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(dst.Inner.Items) != len(src.Inner.Items) || dst.Inner.Items[0] != "first" || dst.Inner.Items[1] != "second" {
+		t.Fatalf("roundtrip slice: got %+v want %+v", dst, src)
+	}
 }

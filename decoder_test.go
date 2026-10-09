@@ -717,6 +717,86 @@ func TestUnexportedField(t *testing.T) {
 	}
 }
 
+type unexportedType struct {
+	Inner string
+}
+
+type S6WithUnexported struct {
+	*unexportedType
+	unexportedPtr *string
+	unexportedVal int
+	Exported      string `schema:"exported"`
+}
+
+func TestUnexportedPointerField(t *testing.T) {
+	data := map[string][]string{
+		"exported": {"hello"},
+	}
+	s := &S6WithUnexported{}
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+	if s.Exported != "hello" {
+		t.Errorf("got %q, want %q", s.Exported, "hello")
+	}
+	if s.unexportedType != nil {
+		t.Errorf("expected unexportedType to remain nil")
+	}
+	if s.unexportedPtr != nil {
+		t.Errorf("expected unexportedPtr to remain nil")
+	}
+	if s.unexportedVal != 0 {
+		t.Errorf("expected unexportedVal to remain 0")
+	}
+}
+
+type S6WithDefaults struct {
+	*unexportedType
+	unexportedVal int    `schema:"unexpVal,default:99"`
+	Exported      string `schema:"exported,default:default_str"`
+}
+
+func TestUnexportedFieldsWithDefaults(t *testing.T) {
+	data := map[string][]string{}
+	s := &S6WithDefaults{}
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+	if s.Exported != "default_str" {
+		t.Errorf("got %q, want %q", s.Exported, "default_str")
+	}
+	if s.unexportedVal != 0 {
+		t.Errorf("expected unexported field default to be ignored, got %d", s.unexportedVal)
+	}
+}
+
+func TestUnexportedFieldsInputIgnored(t *testing.T) {
+	data := map[string][]string{
+		"exported":      {"hello"},
+		"unexportedPtr": {"ptr"},
+		"unexportedVal": {"42"},
+	}
+	s := &S6WithUnexported{}
+	err := NewDecoder().Decode(s, data)
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+	if s.Exported != "hello" {
+		t.Errorf("got %q, want %q", s.Exported, "hello")
+	}
+	if s.unexportedType != nil {
+		t.Errorf("expected unexportedType to remain nil")
+	}
+	if s.unexportedPtr != nil {
+		t.Errorf("expected unexportedPtr to remain nil")
+	}
+	if s.unexportedVal != 0 {
+		t.Errorf("expected unexportedVal to remain 0")
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 type S7 struct {

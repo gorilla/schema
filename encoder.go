@@ -66,11 +66,17 @@ func isZero(v reflect.Value) bool {
 		}
 		z := true
 		for i := 0; i < v.NumField(); i++ {
+			if v.Type().Field(i).PkgPath != "" {
+				continue
+			}
 			z = z && isZero(v.Field(i))
 		}
 		return z
 	}
 	// Compare other types directly:
+	if !v.CanInterface() {
+		return false
+	}
 	z := reflect.Zero(v.Type())
 	return v.Interface() == z.Interface()
 }
@@ -87,7 +93,11 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 	errors := MultiError{}
 
 	for i := 0; i < v.NumField(); i++ {
-		name, opts := fieldAlias(t.Field(i), e.cache.tag)
+		field := t.Field(i)
+		if field.PkgPath != "" {
+			continue
+		}
+		name, opts := fieldAlias(field, e.cache.tag)
 		if name == "-" {
 			continue
 		}

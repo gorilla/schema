@@ -132,7 +132,7 @@ func (c *cache) create(t reflect.Type, parentAlias string) *structInfo {
 	for i := 0; i < t.NumField(); i++ {
 		if f := c.createField(t.Field(i), parentAlias); f != nil {
 			info.fields = append(info.fields, f)
-			if ft := indirectType(f.typ); ft.Kind() == reflect.Struct && f.isAnonymous {
+			if ft := indirectType(f.typ); ft.Kind() == reflect.Struct && f.isAnonymous && t.Field(i).PkgPath == "" {
 				anonymousInfos = append(anonymousInfos, c.create(ft, f.canonicalAlias))
 			}
 		}

@@ -118,15 +118,26 @@ func (d *Decoder) setDefaults(t reflect.Type, v reflect.Value) MultiError {
 
 	if v.Type().Kind() == reflect.Struct {
 		for i := 0; i < v.NumField(); i++ {
+			sf := v.Type().Field(i)
+			if sf.PkgPath != "" {
+				continue
+			}
 			field := v.Field(i)
-			if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
+			if field.CanSet() && field.Type().Kind() == reflect.Ptr && field.IsNil() && sf.Anonymous {
 				field.Set(reflect.New(field.Type().Elem()))
 			}
 		}
 	}
 
 	for _, f := range struc.fields {
-		vCurrent := v.FieldByName(f.name)
+		sf, ok := v.Type().FieldByName(f.name)
+		if !ok {
+			continue
+		}
+		vCurrent, err := v.FieldByIndexErr(sf.Index)
+		if err != nil || !vCurrent.CanSet() {
+			continue
+		}
 
 		if vCurrent.Type().Kind() == reflect.Struct && f.defaultValue == "" {
 			errs.merge(d.setDefaults(vCurrent.Type(), vCurrent))
@@ -279,6 +290,9 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 	for _, name := range parts[0].path {
 		if v.Type().Kind() == reflect.Ptr {
 			if v.IsNil() {
+				if !v.CanSet() {
+					return nil
+				}
 				v.Set(reflect.New(v.Type().Elem()))
 			}
 			v = v.Elem()
@@ -287,8 +301,12 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		// alloc embedded structs
 		if v.Type().Kind() == reflect.Struct {
 			for i := 0; i < v.NumField(); i++ {
+				sf := v.Type().Field(i)
+				if sf.PkgPath != "" {
+					continue
+				}
 				field := v.Field(i)
-				if field.Type().Kind() == reflect.Ptr && field.IsNil() && v.Type().Field(i).Anonymous {
+				if field.CanSet() && field.Type().Kind() == reflect.Ptr && field.IsNil() && sf.Anonymous {
 					field.Set(reflect.New(field.Type().Elem()))
 				}
 			}

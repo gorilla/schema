@@ -101,11 +101,12 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		encFunc := typeEncoder(v.Field(i).Type(), e.regenc)
+		field := e.dereference(v.Field(i))
+		encFunc := typeEncoder(field.Type(), e.regenc)
 
 		// Encode non-slice types and custom implementations immediately.
 		if encFunc != nil {
-			value := encFunc(v.Field(i))
+			value := encFunc(field)
 			if opts.Contains("omitempty") && isZero(v.Field(i)) {
 				continue
 			}
@@ -136,9 +137,18 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 			continue
 		}
 
-		dst[name] = []string{}
+		values := []string{}
 		for j := 0; j < v.Field(i).Len(); j++ {
-			dst[name] = append(dst[name], encFunc(v.Field(i).Index(j)))
+			field := e.dereference(v.Field(i).Index(j))
+			encFunc := typeEncoder(field.Type(), e.regenc)
+			if encFunc == nil {
+				errors[v.Field(i).Type().String()] = fmt.Errorf("schema: encoder not found for %v", v.Field(i))
+				break
+			}
+			values = append(values, encFunc(field))
+		}
+		if len(values) == v.Field(i).Len() {
+			dst[name] = values
 		}
 	}
 
@@ -146,6 +156,14 @@ func (e *Encoder) encode(v reflect.Value, dst map[string][]string) error {
 		return errors
 	}
 	return nil
+}
+
+func (e *Encoder) dereference(v reflect.Value) reflect.Value {
+	// Leave nil and registered pointers to their existing encoders.
+	for v.Kind() == reflect.Ptr && !v.IsNil() && !e.hasCustomEncoder(v.Type()) {
+		v = v.Elem()
+	}
+	return v
 }
 
 func (e *Encoder) hasCustomEncoder(t reflect.Type) bool {

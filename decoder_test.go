@@ -2226,6 +2226,28 @@ func TestDefaultValuesAreSet(t *testing.T) {
 	}
 }
 
+func TestDefaultValuesKeepColons(t *testing.T) {
+	type D struct {
+		Endpoint string   `schema:"endpoint,default:https://api.example.test:8443/v1"`
+		Time     string   `schema:"time,default:12:30"`
+		Hosts    []string `schema:"hosts,default:a:1|b:2"`
+	}
+
+	d := D{}
+	if err := NewDecoder().Decode(&d, map[string][]string{}); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := D{
+		Endpoint: "https://api.example.test:8443/v1",
+		Time:     "12:30",
+		Hosts:    []string{"a:1", "b:2"},
+	}
+	if !reflect.DeepEqual(expected, d) {
+		t.Errorf("Expected %v, got %v", expected, d)
+	}
+}
+
 func TestDefaultValuesAreIgnoredIfValuesAreProvided(t *testing.T) {
 	type D struct {
 		S string  `schema:"s,default:test1"`

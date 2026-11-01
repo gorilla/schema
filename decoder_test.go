@@ -2527,3 +2527,26 @@ func TestDecoder_SetMaxSize(t *testing.T) {
 		}
 	})
 }
+
+func TestDefaultValuesAreNotTruncatedAtColon(t *testing.T) {
+	type C struct {
+		Endpoint string `schema:"endpoint,default:https://api.example.test:8443/v1"`
+		Time     string `schema:"time,default:12:30"`
+		Port     int    `schema:"port,default:8080"`
+	}
+
+	data := map[string][]string{}
+	c := C{}
+	if err := NewDecoder().Decode(&c, data); err != nil {
+		t.Fatal("Error while decoding:", err)
+	}
+
+	expected := C{
+		Endpoint: "https://api.example.test:8443/v1",
+		Time:     "12:30",
+		Port:     8080,
+	}
+	if !reflect.DeepEqual(expected, c) {
+		t.Errorf("Expected %+v, got %+v", expected, c)
+	}
+}

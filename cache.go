@@ -309,7 +309,10 @@ func (o tagOptions) Contains(option string) bool {
 func (o tagOptions) getDefaultOptionValue() string {
 	for _, s := range o {
 		if strings.HasPrefix(s, "default:") {
-			return strings.Split(s, ":")[1]
+			// Keep everything after the option name, so defaults containing
+			// a colon (a URL with a port, a timestamp such as "12:30") are
+			// not truncated.
+			return strings.TrimPrefix(s, "default:")
 		}
 	}
 

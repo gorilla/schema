@@ -425,9 +425,11 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart, values 
 		v.Set(value)
 	} else {
 		val := ""
-		// Use the last value provided if any values were provided
+		// Use the first value provided if any values were provided,
+		// as documented for single value fields and matching the
+		// net/url and http.Request.FormValue conventions.
 		if len(values) > 0 {
-			val = values[len(values)-1]
+			val = values[0]
 		}
 
 		if conv != nil {

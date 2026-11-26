@@ -733,8 +733,8 @@ func TestMultipleValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to decode: %v", err)
 	}
-	if s.ID != "1" {
-		t.Errorf("Last defined value must be used when multiple values for same field are provided")
+	if s.ID != "0" {
+		t.Errorf("First defined value must be used when multiple values for same field are provided")
 	}
 }
 
@@ -2526,4 +2526,25 @@ func TestDecoder_SetMaxSize(t *testing.T) {
 				configuredMaxSize, limitedMaxSizeDecoder.maxSize)
 		}
 	})
+}
+
+func TestScalarUsesFirstValue(t *testing.T) {
+	type S struct {
+		Name string
+		N    int
+	}
+	data := map[string][]string{
+		"Name": {"first", "second", "third"},
+		"N":    {"1", "2"},
+	}
+	s := S{}
+	if err := NewDecoder().Decode(&s, data); err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+	if s.Name != "first" {
+		t.Errorf("Name: got %q, want %q", s.Name, "first")
+	}
+	if s.N != 1 {
+		t.Errorf("N: got %d, want %d", s.N, 1)
+	}
 }

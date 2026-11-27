@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type encoderFunc func(reflect.Value) string
@@ -197,6 +198,14 @@ func encodeUint(v reflect.Value) string {
 }
 
 func encodeFloat(v reflect.Value, bits int) string {
+	value := strconv.FormatFloat(v.Float(), 'f', -1, bits)
+	// Keep the existing six decimal places when they can represent the value.
+	if point := strings.IndexByte(value, '.'); point >= 0 {
+		if digits := len(value) - point - 1; digits < 6 {
+			return value + "000000"[:6-digits]
+		}
+		return value
+	}
 	return strconv.FormatFloat(v.Float(), 'f', 6, bits)
 }
 

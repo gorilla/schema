@@ -80,6 +80,25 @@ type E3 struct {
 	F15 Aa      `schema:"f15"`
 }
 
+func TestFloatPrecisionRoundTrip(t *testing.T) {
+	type coordinate struct {
+		Latitude  float64
+		Longitude float32
+	}
+	src := coordinate{Latitude: 51.501234567, Longitude: -0.0000004}
+	values := make(map[string][]string)
+	if err := NewEncoder().Encode(src, values); err != nil {
+		t.Fatal(err)
+	}
+	var got coordinate
+	if err := NewDecoder().Decode(&got, values); err != nil {
+		t.Fatal(err)
+	}
+	if got != src {
+		t.Errorf("encoded %v: got %+v, want %+v", values, got, src)
+	}
+}
+
 // Test compatibility with default decoder types.
 func TestCompat(t *testing.T) {
 	src := &E3{
